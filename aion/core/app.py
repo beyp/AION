@@ -17,7 +17,7 @@ class AionApp:
         )
 
         self.registry = ServiceRegistry()
-        self.registry.register_default_services()
+        self.registry.discover_services()
         self.executor = ServiceExecutor(self.registry)
 
     def run(self) -> None:
