@@ -53,3 +53,10 @@ class ServiceRegistry:
 
     def count(self) -> int:
         return len(self._services)
+
+    def clear(self) -> None:
+        self._services.clear()
+
+    def reload_services(self) -> None:
+        self.clear()
+        self.discover_services()

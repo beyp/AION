@@ -76,6 +76,11 @@ class AionApp:
                 service_name
             )
 
+        if command == "reload services":
+            self.registry.reload_services()
+            return f"Services rechargés : {self.registry.count()}"
+
+        # else return commande inconnue
         return (
             "Commande inconnue. Essaie : help, services, run hello, "
             "run system_info, quit"
@@ -91,6 +96,7 @@ status            AION Status
 info <service>    Information sur le <Service>
 run hello         Lance le service hello
 run system_info   Affiche des informations système
+reload services   Recharge les services sans redémarrer AION
 quit              Quitte AION
 """.strip()
 
