@@ -1,9 +1,11 @@
+from pathlib import Path
+
 from aion.core.config_loader import ConfigLoader
 from aion.core.executor import ServiceExecutor
 from aion.core.logger import setup_logger
 from aion.core.registry import ServiceRegistry
 from aion.memory.memory_manager import MemoryManager
-from pathlib import Path
+
 
 class AionApp:
     """Main console application for AION."""
@@ -25,7 +27,7 @@ class AionApp:
     def run(self) -> None:
         app_config = self.config.get("app", {})
         app_name = app_config.get("name", "AION")
-        app_version = app_config.get("version", "0.1.0")
+        app_version = app_config.get("version", "0.3.1")
 
         print(f"\n{app_name} v{app_version}")
         print("AI Agent Orchestrator Node")
@@ -60,27 +62,20 @@ class AionApp:
         if command == "services":
             return self._list_services()
 
-        if command.startswith("run "):
-            service_name = command.replace("run ", "", 1).strip()
-            return self.executor.execute(service_name)
-
         if command == "status":
             return self._status()
-
-        if command.startswith("info "):
-            service_name = command.replace(
-                "info ",
-                "",
-                1
-            ).strip()
-
-            return self._service_info(
-                service_name
-            )
 
         if command == "reload services":
             self.registry.reload_services()
             return f"Services rechargés : {self.registry.count()}"
+
+        if command.startswith("info "):
+            service_name = command.replace("info ", "", 1).strip()
+            return self._service_info(service_name)
+
+        if command.startswith("run "):
+            service_name = command.replace("run ", "", 1).strip()
+            return self.executor.execute(service_name)
 
         if command.startswith("remember path "):
             return self._remember_path(command)
@@ -100,6 +95,24 @@ class AionApp:
         if command == "memory":
             return self._list_memory()
 
+        if command == "memory list":
+            return self._list_memory()
+
+        if command.startswith("memory list "):
+            memory_type = command.replace("memory list ", "", 1).strip()
+            return self._list_memory(memory_type=memory_type)
+
+        if command.startswith("memory show "):
+            key = command.replace("memory show ", "", 1).strip()
+            return self._show_memory_item(key)
+
+        if command.startswith("memory search "):
+            query = command.replace("memory search ", "", 1).strip()
+            return self._search_memory(query)
+
+        if command == "memory stats":
+            return self._memory_stats()
+
         if command.startswith("forget "):
             key = command.replace("forget ", "", 1).strip()
 
@@ -108,29 +121,50 @@ class AionApp:
 
             return f"Aucune mémoire trouvée pour : {key}"
 
-        # else return commande inconnue
         return (
             "Commande inconnue. Essaie : help, services, run hello, "
-            "run system_info, quit"
+            "run system_info, status, memory list, quit"
         )
 
     def _help(self) -> str:
         return """
 Commandes disponibles :
 
-help              Affiche l'aide
-services          Liste les services disponibles
-status            AION Status
-info <service>    Information sur le <Service>
-run hello         Lance le service hello
-run system_info   Affiche des informations système
-reload services   Recharge les services sans redémarrer AION
-memory                         Liste la mémoire permanente
-remember clé=valeur            Mémorise une information
-remember path clé=chemin       Mémorise un chemin local existant
-recall clé                     Rappelle une information
-forget clé                     Supprime une information
-quit              Quitte AION
+help                         Affiche l'aide
+services                     Liste les services disponibles
+reload services              Recharge les services sans redémarrer AION
+info <service>               Affiche les détails d'un service
+run <service>                Lance un service
+status                       Affiche le statut d'AION
+
+Mémoire :
+memory                       Liste toute la mémoire permanente
+memory list                  Liste toute la mémoire permanente
+memory list <type>           Liste la mémoire d'un type précis
+memory show <clé>            Affiche le détail d'une mémoire
+memory search <texte>        Recherche dans les clés, valeurs et types
+memory stats                 Affiche les statistiques de mémoire
+remember clé=valeur          Mémorise une information
+remember path clé=chemin     Mémorise un chemin local existant
+recall clé                   Rappelle une valeur simple
+forget clé                   Supprime une mémoire
+
+quit                         Quitte AION
+""".strip()
+
+    def _status(self) -> str:
+        stats = self.memory.stats()
+
+        return f"""
+AION Status
+
+Version : 0.3.1
+Services : {self.registry.count()}
+Memory : Ready
+Memory items : {stats["total"]}
+Temporary memory items : {stats["temporary_total"]}
+Event Bus : Ready
+AI : Not Connected
 """.strip()
 
     def _list_services(self) -> str:
@@ -145,26 +179,8 @@ quit              Quitte AION
 
         return "\n".join(lines)
 
-    def _status(self):
-
-        return f"""
-    AION Status
-
-    Version : 0.1.1
-    Services : {self.registry.count()}
-    Memory : Ready
-    Event Bus : Ready
-    AI : Not Connected
-    """.strip()
-
-    def _service_info(
-        self,
-        service_name
-    ):
-
-        service = self.registry.get(
-            service_name
-        )
+    def _service_info(self, service_name: str) -> str:
+        service = self.registry.get(service_name)
 
         if service is None:
             return "Service introuvable."
@@ -216,17 +232,71 @@ Permissions :
         self.memory.remember(key, str(path), memory_type="path")
         return f"Chemin mémorisé : {key}"
 
-    def _list_memory(self) -> str:
-        memory = self.memory.list_memory()
+    def _list_memory(self, memory_type: str | None = None) -> str:
+        memory = self.memory.list_memory(memory_type=memory_type)
 
         if not memory:
+            if memory_type:
+                return f"Aucune mémoire trouvée pour le type : {memory_type}"
             return "Mémoire vide."
 
-        lines = ["Mémoire AION :"]
+        title = "Mémoire AION"
+        if memory_type:
+            title += f" [{memory_type}]"
+
+        lines = [f"{title} :"]
 
         for key, item in memory.items():
             lines.append(
                 f"- {key} [{item.get('type', 'info')}] = {item.get('value')}"
             )
+
+        return "\n".join(lines)
+
+    def _show_memory_item(self, key: str) -> str:
+        item = self.memory.get_item(key)
+
+        if item is None:
+            return f"Aucune mémoire trouvée pour : {key}"
+
+        return f"""
+Mémoire : {key}
+
+Type : {item.get("type", "info")}
+Valeur : {item.get("value")}
+Créée le : {item.get("created_at", "inconnu")}
+Mise à jour le : {item.get("updated_at", "inconnu")}
+""".strip()
+
+    def _search_memory(self, query: str) -> str:
+        results = self.memory.search(query)
+
+        if not results:
+            return f"Aucune mémoire trouvée pour la recherche : {query}"
+
+        lines = [f"Résultats mémoire pour : {query}"]
+
+        for key, item in results.items():
+            lines.append(
+                f"- {key} [{item.get('type', 'info')}] = {item.get('value')}"
+            )
+
+        return "\n".join(lines)
+
+    def _memory_stats(self) -> str:
+        stats = self.memory.stats()
+
+        lines = [
+            "Statistiques mémoire :",
+            f"- Total permanent : {stats['total']}",
+            f"- Total temporaire : {stats['temporary_total']}",
+            "- Par type :",
+        ]
+
+        if not stats["by_type"]:
+            lines.append("  Aucun élément")
+        else:
+            for memory_type, count in stats["by_type"].items():
+                lines.append(f"  - {memory_type}: {count}")
 
         return "\n".join(lines)

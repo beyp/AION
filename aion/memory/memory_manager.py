@@ -1,4 +1,4 @@
-﻿from datetime import datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 import json
@@ -36,12 +36,16 @@ class MemoryManager:
             )
 
     def remember(self, key: str, value: Any, memory_type: str = "info") -> None:
+        now = datetime.now().isoformat(timespec="seconds")
+        existing = self.persistent_memory.get(key, {})
+
         self.persistent_memory[key] = {
             "type": memory_type,
             "value": value,
-            "created_at": datetime.now().isoformat(timespec="seconds"),
-            "updated_at": datetime.now().isoformat(timespec="seconds"),
+            "created_at": existing.get("created_at", now),
+            "updated_at": now,
         }
+
         self.save()
 
     def recall(self, key: str) -> Any | None:
@@ -52,6 +56,9 @@ class MemoryManager:
 
         return item.get("value")
 
+    def get_item(self, key: str) -> dict[str, Any] | None:
+        return self.persistent_memory.get(key)
+
     def forget(self, key: str) -> bool:
         if key not in self.persistent_memory:
             return False
@@ -60,8 +67,53 @@ class MemoryManager:
         self.save()
         return True
 
-    def list_memory(self) -> dict[str, Any]:
-        return self.persistent_memory
+    def list_memory(self, memory_type: str | None = None) -> dict[str, Any]:
+        if memory_type is None:
+            return self.persistent_memory
+
+        return {
+            key: item
+            for key, item in self.persistent_memory.items()
+            if item.get("type") == memory_type
+        }
+
+    def search(self, query: str) -> dict[str, Any]:
+        normalized_query = query.lower().strip()
+
+        if not normalized_query:
+            return {}
+
+        results = {}
+
+        for key, item in self.persistent_memory.items():
+            value = str(item.get("value", ""))
+            memory_type = str(item.get("type", ""))
+
+            searchable_text = " ".join(
+                [
+                    key.lower(),
+                    value.lower(),
+                    memory_type.lower(),
+                ]
+            )
+
+            if normalized_query in searchable_text:
+                results[key] = item
+
+        return results
+
+    def stats(self) -> dict[str, Any]:
+        by_type: dict[str, int] = {}
+
+        for item in self.persistent_memory.values():
+            memory_type = item.get("type", "unknown")
+            by_type[memory_type] = by_type.get(memory_type, 0) + 1
+
+        return {
+            "total": len(self.persistent_memory),
+            "by_type": by_type,
+            "temporary_total": len(self.temporary_memory),
+        }
 
     def remember_temp(self, key: str, value: Any) -> None:
         self.temporary_memory[key] = {
