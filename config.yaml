@@ -1,0 +1,12 @@
+app:
+  name: AION
+  version: "0.1.0"
+  environment: local
+
+logging:
+  file: logs/aion.log
+  level: INFO
+
+security:
+  require_confirmation_for_unknown_commands: true
+  allow_shell_execution: false
