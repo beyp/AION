@@ -21,3 +21,6 @@ class ServiceRegistry:
 
     def get(self, service_name: str) -> BaseService | None:
         return self._services.get(service_name)
+
+    def count(self):
+        return len(self._services)

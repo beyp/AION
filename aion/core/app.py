@@ -62,6 +62,20 @@ class AionApp:
             service_name = command.replace("run ", "", 1).strip()
             return self.executor.execute(service_name)
 
+        if command == "status":
+            return self._status()
+
+        if command.startswith("info "):
+            service_name = command.replace(
+                "info ",
+                "",
+                1
+            ).strip()
+
+            return self._service_info(
+                service_name
+            )
+
         return (
             "Commande inconnue. Essaie : help, services, run hello, "
             "run system_info, quit"
@@ -73,6 +87,8 @@ Commandes disponibles :
 
 help              Affiche l'aide
 services          Liste les services disponibles
+status            AION Status
+info <service>    Information sur le <Service>
 run hello         Lance le service hello
 run system_info   Affiche des informations système
 quit              Quitte AION
@@ -89,3 +105,38 @@ quit              Quitte AION
             lines.append(f"- {service.name}: {service.description}")
 
         return "\n".join(lines)
+
+    def _status(self):
+
+        return f"""
+    AION Status
+
+    Version : 0.1.1
+    Services : {self.registry.count()}
+    Memory : Ready
+    Event Bus : Ready
+    AI : Not Connected
+    """.strip()
+
+    def _service_info(
+        self,
+        service_name
+    ):
+
+        service = self.registry.get(
+            service_name
+        )
+
+        if service is None:
+            return "Service introuvable."
+
+        return f"""
+Service : {service.name}
+
+Description :
+{service.description}
+
+Permissions :
+{", ".join(service.permissions) if service.permissions else "Aucune"}
+""".strip()
+
