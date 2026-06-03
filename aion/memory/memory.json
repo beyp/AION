@@ -1,0 +1,14 @@
+{
+    "prenom": {
+        "type": "info",
+        "value": "Pascal",
+        "created_at": "2026-06-03T23:03:09",
+        "updated_at": "2026-06-03T23:03:09"
+    },
+    "AIONPath": {
+        "type": "path",
+        "value": "C:\\code\\python\\AION",
+        "created_at": "2026-06-03T23:04:38",
+        "updated_at": "2026-06-03T23:04:38"
+    }
+}

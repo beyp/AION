@@ -2,7 +2,8 @@ from aion.core.config_loader import ConfigLoader
 from aion.core.executor import ServiceExecutor
 from aion.core.logger import setup_logger
 from aion.core.registry import ServiceRegistry
-
+from aion.memory.memory_manager import MemoryManager
+from pathlib import Path
 
 class AionApp:
     """Main console application for AION."""
@@ -19,6 +20,7 @@ class AionApp:
         self.registry = ServiceRegistry()
         self.registry.discover_services()
         self.executor = ServiceExecutor(self.registry)
+        self.memory = MemoryManager()
 
     def run(self) -> None:
         app_config = self.config.get("app", {})
@@ -80,6 +82,32 @@ class AionApp:
             self.registry.reload_services()
             return f"Services rechargés : {self.registry.count()}"
 
+        if command.startswith("remember path "):
+            return self._remember_path(command)
+
+        if command.startswith("remember "):
+            return self._remember_info(command)
+
+        if command.startswith("recall "):
+            key = command.replace("recall ", "", 1).strip()
+            value = self.memory.recall(key)
+
+            if value is None:
+                return f"Aucune mémoire trouvée pour : {key}"
+
+            return f"{key} = {value}"
+
+        if command == "memory":
+            return self._list_memory()
+
+        if command.startswith("forget "):
+            key = command.replace("forget ", "", 1).strip()
+
+            if self.memory.forget(key):
+                return f"Mémoire supprimée : {key}"
+
+            return f"Aucune mémoire trouvée pour : {key}"
+
         # else return commande inconnue
         return (
             "Commande inconnue. Essaie : help, services, run hello, "
@@ -97,6 +125,11 @@ info <service>    Information sur le <Service>
 run hello         Lance le service hello
 run system_info   Affiche des informations système
 reload services   Recharge les services sans redémarrer AION
+memory                         Liste la mémoire permanente
+remember clé=valeur            Mémorise une information
+remember path clé=chemin       Mémorise un chemin local existant
+recall clé                     Rappelle une information
+forget clé                     Supprime une information
 quit              Quitte AION
 """.strip()
 
@@ -146,3 +179,54 @@ Permissions :
 {", ".join(service.permissions) if service.permissions else "Aucune"}
 """.strip()
 
+    def _remember_info(self, command: str) -> str:
+        raw = command.replace("remember ", "", 1).strip()
+
+        if "=" not in raw:
+            return "Format attendu : remember clé=valeur"
+
+        key, value = raw.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+
+        if not key or not value:
+            return "La clé et la valeur sont obligatoires."
+
+        self.memory.remember(key, value, memory_type="info")
+        return f"Information mémorisée : {key}"
+
+    def _remember_path(self, command: str) -> str:
+        raw = command.replace("remember path ", "", 1).strip()
+
+        if "=" not in raw:
+            return "Format attendu : remember path clé=chemin"
+
+        key, value = raw.split("=", 1)
+        key = key.strip()
+        value = value.strip().strip('"')
+
+        if not key or not value:
+            return "La clé et le chemin sont obligatoires."
+
+        path = Path(value)
+
+        if not path.exists():
+            return f"Chemin introuvable : {value}"
+
+        self.memory.remember(key, str(path), memory_type="path")
+        return f"Chemin mémorisé : {key}"
+
+    def _list_memory(self) -> str:
+        memory = self.memory.list_memory()
+
+        if not memory:
+            return "Mémoire vide."
+
+        lines = ["Mémoire AION :"]
+
+        for key, item in memory.items():
+            lines.append(
+                f"- {key} [{item.get('type', 'info')}] = {item.get('value')}"
+            )
+
+        return "\n".join(lines)
