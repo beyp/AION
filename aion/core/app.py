@@ -342,8 +342,11 @@ Mise a jour : {item.get("updated_at", "inconnu")}"""
             return f"Scheduler : {state} - Aucun job planifie."
         lines = [f"Scheduler : {state} - {self.scheduler.job_count()} job(s) :"]
         for job_id, info in jobs.items():
+            job_state = self.scheduler.get_job_state(job_id)
+            status_icon = "⏸ paused" if job_state == "paused" else "▶ running"
             lines.append(
-                f"  - {job_id} -> {info['func']} (toutes les {info['interval_seconds']}s)"
+                f"  - {job_id} [{status_icon}] -> {info['func']} "
+                f"(toutes les {info['interval_seconds']}s)"
             )
         return "\n".join(lines)
 

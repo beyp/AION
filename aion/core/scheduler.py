@@ -122,3 +122,14 @@ class AionScheduler:
         self._scheduler.resume_job(job_id)
         logger.info("Scheduler: job '%s' resumed", job_id)
         return True
+
+    def get_job_state(self, job_id: str) -> str:
+        """Retourne l etat reel d un job : running, paused ou unknown."""
+        try:
+            job = self._scheduler.get_job(job_id)
+            if job is None:
+                return "unknown"
+            return "paused" if job.next_run_time is None else "running"
+        except Exception:
+            return "unknown"
+
