@@ -1,0 +1,1 @@
+"""AION Notifications module."""

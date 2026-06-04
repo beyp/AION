@@ -1,4 +1,4 @@
-"""Application console principale d AION v0.4.0."""
+"""Application console principale d AION v0.5.0."""
 from pathlib import Path
 
 from aion.core.config_loader import ConfigLoader
@@ -8,12 +8,16 @@ from aion.core.logger import setup_logger
 from aion.core.registry import ServiceRegistry
 from aion.core.scheduler import AionScheduler
 from aion.memory.memory_manager import MemoryManager
+from aion.notifications.notifier import AionNotifier
+from aion.tray.tray_app import AionTrayApp
 
-AION_VERSION = "0.4.0"
+AION_VERSION = "0.5.0"
 
 
 class AionApp:
     """Application console principale pour AION."""
+
+    AION_VERSION = AION_VERSION
 
     def __init__(self) -> None:
         self.config = ConfigLoader().load()
@@ -31,12 +35,21 @@ class AionApp:
         self.event_bus = EventBus()
         self.scheduler = AionScheduler()
 
+        notif_config = self.config.get("notifications", {})
+        self.notifier = AionNotifier(
+            enabled=notif_config.get("enabled", True)
+        )
+
+        self.tray = AionTrayApp(self)
+        self._stop_requested = False
+
         self._register_event_hooks()
 
     def _register_event_hooks(self) -> None:
         """Enregistre les hooks internes de l EventBus."""
         self.event_bus.subscribe("service.executed", self._on_service_executed)
         self.event_bus.subscribe("memory.changed", self._on_memory_changed)
+        self.event_bus.subscribe("alert", self._on_alert)
 
     def _on_service_executed(self, data: dict) -> None:
         self.logger.info("Event [service.executed]: %s", data.get("service"))
@@ -48,6 +61,16 @@ class AionApp:
             data.get("action"),
         )
 
+    def _on_alert(self, data: dict) -> None:
+        """Handler d alerte : envoie une notification toast."""
+        message = data.get("message", "Alerte AION")
+        self.logger.warning("Event [alert]: %s", message)
+        self.notifier.notify_alert(message)
+
+    def request_stop(self) -> None:
+        """Demande l arret propre d AION (appele depuis le systray)."""
+        self._stop_requested = True
+
     def run(self) -> None:
         app_config = self.config.get("app", {})
         app_name = app_config.get("name", "AION")
@@ -57,19 +80,30 @@ class AionApp:
         print("Tape 'help' pour voir les commandes.\n")
 
         self.logger.info("AION started v%s", AION_VERSION)
+
         self.scheduler.start()
+        self.tray.start()
+        self.notifier.notify_info(f"AION v{AION_VERSION} demarre !")
 
         try:
             self._main_loop()
         finally:
             self.scheduler.stop()
+            self.tray.stop()
 
     def _main_loop(self) -> None:
         while True:
+            if self._stop_requested:
+                print("\nArret demande via systray.")
+                self.logger.info("AION stopped via systray")
+                break
+
             try:
                 command = input("AION> ").strip()
             except KeyboardInterrupt:
                 print("\nArret demande.")
+                break
+            except EOFError:
                 break
 
             if not command:
@@ -88,21 +122,15 @@ class AionApp:
 
         if command == "help":
             return self._help()
-
         if command == "services":
             return self._list_services()
-
         if command == "status":
             return self._status()
-
         if command == "reload services":
             self.registry.reload_services()
             return f"Services recharges : {self.registry.count()}"
-
         if command.startswith("info "):
-            service_name = command.replace("info ", "", 1).strip()
-            return self._service_info(service_name)
-
+            return self._service_info(command.replace("info ", "", 1).strip())
         if command.startswith("run "):
             service_name = command.replace("run ", "", 1).strip()
             result = self.executor.execute(service_name)
@@ -112,35 +140,22 @@ class AionApp:
         # Memoire
         if command.startswith("remember path "):
             return self._remember_path(command)
-
         if command.startswith("remember "):
             return self._remember_info(command)
-
         if command.startswith("recall "):
             key = command.replace("recall ", "", 1).strip()
             value = self.memory.recall(key)
-            if value is None:
-                return f"Aucune memoire trouvee pour : {key}"
-            return f"{key} = {value}"
-
+            return f"{key} = {value}" if value is not None else f"Aucune memoire trouvee pour : {key}"
         if command in {"memory", "memory list"}:
             return self._list_memory()
-
         if command.startswith("memory list "):
-            memory_type = command.replace("memory list ", "", 1).strip()
-            return self._list_memory(memory_type=memory_type)
-
+            return self._list_memory(memory_type=command.replace("memory list ", "", 1).strip())
         if command.startswith("memory show "):
-            key = command.replace("memory show ", "", 1).strip()
-            return self._show_memory_item(key)
-
+            return self._show_memory_item(command.replace("memory show ", "", 1).strip())
         if command.startswith("memory search "):
-            query = command.replace("memory search ", "", 1).strip()
-            return self._search_memory(query)
-
+            return self._search_memory(command.replace("memory search ", "", 1).strip())
         if command == "memory stats":
             return self._memory_stats()
-
         if command.startswith("forget "):
             key = command.replace("forget ", "", 1).strip()
             if self.memory.forget(key):
@@ -155,26 +170,36 @@ class AionApp:
         # Scheduler
         if command == "scheduler":
             return self._scheduler_status()
-
         if command.startswith("schedule "):
             return self._schedule_service(command)
-
         if command.startswith("unschedule "):
             job_id = command.replace("unschedule ", "", 1).strip()
             self.scheduler.remove_job(job_id)
             return f"Job supprime : {job_id}"
-
         if command.startswith("pause job "):
             job_id = command.replace("pause job ", "", 1).strip()
-            if self.scheduler.pause_job(job_id):
-                return f"Job mis en pause : {job_id}"
-            return f"Job introuvable : {job_id}"
-
+            return f"Job mis en pause : {job_id}" if self.scheduler.pause_job(job_id) else f"Job introuvable : {job_id}"
         if command.startswith("resume job "):
             job_id = command.replace("resume job ", "", 1).strip()
-            if self.scheduler.resume_job(job_id):
-                return f"Job repris : {job_id}"
-            return f"Job introuvable : {job_id}"
+            return f"Job repris : {job_id}" if self.scheduler.resume_job(job_id) else f"Job introuvable : {job_id}"
+
+        # Notifications
+        if command == "notify on":
+            self.notifier.enabled = True
+            self.tray.update_menu()
+            return "Notifications activees."
+        if command == "notify off":
+            self.notifier.enabled = False
+            self.tray.update_menu()
+            return "Notifications desactivees."
+        if command == "notify status":
+            state = "activees" if self.notifier.enabled else "desactivees"
+            avail = "disponible" if self.notifier.available else "non disponible (plyer manquant)"
+            return f"Notifications : {state} | plyer : {avail}"
+
+        if command == "notify test":
+            self.notifier.notify_info("Test notification AION fonctionne ! 🎉")
+            return "Notification envoyee."
 
         # API
         if command == "api start":
@@ -182,7 +207,7 @@ class AionApp:
 
         return (
             "Commande inconnue. Essaie : help, services, run <service>, "
-            "scheduler, schedule <service> every <N>s, api start, events, memory list, quit"
+            "scheduler, schedule <service> every <N>s, notify on/off, api start, quit"
         )
 
     def _help(self) -> str:
@@ -197,43 +222,54 @@ status                            Statut d AION
 
 Memoire :
 memory                            Liste toute la memoire persistante
-memory list [type]                Liste la memoire (filtrable par type)
-memory show <cle>                 Detail d un element memoire
-memory search <texte>             Recherche dans la memoire
-memory stats                      Statistiques memoire
-remember cle=valeur               Memorise une information
-remember path cle=chemin          Memorise un chemin local existant
-recall cle                        Rappelle une valeur
-forget cle                        Supprime une memoire
+memory list [type]                Filtrer par type
+memory show <cle>                 Detail d un element
+memory search <texte>             Recherche
+memory stats                      Statistiques
+remember cle=valeur               Memoriser
+remember path cle=chemin          Memoriser un chemin
+recall cle                        Lire une valeur
+forget cle                        Supprimer
 
 EventBus :
 events                            Liste les evenements actifs
 
 Scheduler :
 scheduler                         Statut du planificateur
-schedule <service> every <N>s     Planifie un service toutes les N secondes
-unschedule <job_id>               Supprime un job planifie
-pause job <job_id>                Met un job en pause
-resume job <job_id>               Reprend un job en pause
+schedule <service> every <N>s     Planifier un service
+unschedule <job_id>               Supprimer un job
+pause job <job_id>                Mettre en pause
+resume job <job_id>               Reprendre
 
-API REST :
-api start                         Demarre le serveur API REST (port 8000)
+Notifications :
+notify on                         Activer les toasts Windows
+notify off                        Desactiver les toasts Windows
+notify status                     Etat des notifications
 
-quit                              Quitte AION"""
+API REST + Dashboard :
+api start                         Demarrer API (port 8000)
+                                  Dashboard : http://127.0.0.1:8000/dashboard
+                                  Swagger   : http://127.0.0.1:8000/docs
+
+quit                              Quitter AION"""
 
     def _status(self) -> str:
         stats = self.memory.stats()
         active_events = self.event_bus.list_events()
         sched_state = "Running" if self.scheduler.is_running() else "Stopped"
-        return f"""AION Status
-
-Version      : {AION_VERSION}
-Services     : {self.registry.count()}
-Memory       : Ready ({stats["total"]} items, {stats["temporary_total"]} temp)
-EventBus     : Ready ({len(active_events)} event(s) actif(s))
-Scheduler    : {sched_state} ({self.scheduler.job_count()} jobs)
-API REST     : http://127.0.0.1:8000 (lancez "api start")
-AI           : Not Connected"""
+        notif_state = "ON" if self.notifier.enabled else "OFF"
+        return (
+            f"AION Status\n\n"
+            f"Version       : {AION_VERSION}\n"
+            f"Services      : {self.registry.count()}\n"
+            f"Memory        : Ready ({stats['total']} items, {stats['temporary_total']} temp)\n"
+            f"EventBus      : Ready ({len(active_events)} event(s))\n"
+            f"Scheduler     : {sched_state} ({self.scheduler.job_count()} jobs)\n"
+            f"Notifications : {notif_state}\n"
+            f"Systray       : Running\n"
+            f"Dashboard     : http://127.0.0.1:8000/dashboard\n"
+            f"AI            : Not Connected"
+        )
 
     def _list_services(self) -> str:
         services = self.registry.list_services()
@@ -249,9 +285,7 @@ AI           : Not Connected"""
         if service is None:
             return "Service introuvable."
         perms = ", ".join(service.permissions) if service.permissions else "Aucune"
-        return f"""Service     : {service.name}
-Description : {service.description}
-Permissions : {perms}"""
+        return f"Service     : {service.name}\nDescription : {service.description}\nPermissions : {perms}"
 
     def _remember_info(self, command: str) -> str:
         raw = command.replace("remember ", "", 1).strip()
@@ -295,11 +329,13 @@ Permissions : {perms}"""
         item = self.memory.get_item(key)
         if item is None:
             return f"Aucune memoire trouvee pour : {key}"
-        return f"""Memoire     : {key}
-Type        : {item.get("type", "info")}
-Valeur      : {item.get("value")}
-Creee       : {item.get("created_at", "inconnu")}
-Mise a jour : {item.get("updated_at", "inconnu")}"""
+        return (
+            f"Memoire     : {key}\n"
+            f"Type        : {item.get('type', 'info')}\n"
+            f"Valeur      : {item.get('value')}\n"
+            f"Creee       : {item.get('created_at', 'inconnu')}\n"
+            f"Mise a jour : {item.get('updated_at', 'inconnu')}"
+        )
 
     def _search_memory(self, query: str) -> str:
         results = self.memory.search(query)
@@ -343,11 +379,8 @@ Mise a jour : {item.get("updated_at", "inconnu")}"""
         lines = [f"Scheduler : {state} - {self.scheduler.job_count()} job(s) :"]
         for job_id, info in jobs.items():
             job_state = self.scheduler.get_job_state(job_id)
-            status_icon = "⏸ paused" if job_state == "paused" else "▶ running"
-            lines.append(
-                f"  - {job_id} [{status_icon}] -> {info['func']} "
-                f"(toutes les {info['interval_seconds']}s)"
-            )
+            icon = "⏸ paused" if job_state == "paused" else "▶ running"
+            lines.append(f"  - {job_id} [{icon}] -> {info['func']} (toutes les {info['interval_seconds']}s)")
         return "\n".join(lines)
 
     def _schedule_service(self, command: str) -> str:
@@ -356,10 +389,9 @@ Mise a jour : {item.get("updated_at", "inconnu")}"""
             if len(parts) != 2:
                 return "Format attendu : schedule <service> every <N>s"
             service_name = parts[0].strip()
-            interval_str = parts[1].strip().rstrip("s")
-            interval_seconds = int(interval_str)
+            interval_seconds = int(parts[1].strip().rstrip("s"))
         except (ValueError, IndexError):
-            return "Format attendu : schedule <service> every <N>s  (ex: schedule ping every 60s)"
+            return "Format attendu : schedule <service> every <N>s"
 
         service = self.registry.get(service_name)
         if service is None:
@@ -367,13 +399,17 @@ Mise a jour : {item.get("updated_at", "inconnu")}"""
 
         job_id = f"scheduled_{service_name}"
         _executor = self.executor
+        _notifier = self.notifier
         _logger = self.logger
 
         def run():
             result = _executor.execute(service_name, {})
-            _logger.info("Scheduled job '%s' result: %s", service_name, result)
+            _logger.info("Scheduled '%s': %s", service_name, result)
+            if "ALERTE" in result or "DOWN" in result.upper() or "ERROR" in result.upper():
+                _notifier.notify_alert(f"{service_name}: {result[:120]}")
 
         self.scheduler.add_job(job_id, run, interval_seconds=interval_seconds)
+        self.tray.update_menu()
         return f"Job planifie : {job_id} (toutes les {interval_seconds}s)"
 
     def _start_api(self) -> str:
@@ -386,9 +422,11 @@ Mise a jour : {item.get("updated_at", "inconnu")}"""
                 stdout=subprocess.DEVNULL,
                 stderr=subprocess.DEVNULL,
             )
+            self.notifier.notify_info("API REST demarree -> http://127.0.0.1:8000")
             return (
                 "Serveur API demarre -> http://127.0.0.1:8000\n"
-                "Docs disponibles sur  http://127.0.0.1:8000/docs"
+                "Dashboard disponible -> http://127.0.0.1:8000/dashboard\n"
+                "Swagger disponible  -> http://127.0.0.1:8000/docs"
             )
         except Exception as exc:
             return f"Impossible de demarrer l API : {exc}"

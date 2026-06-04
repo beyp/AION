@@ -1,67 +1,72 @@
-AION v0.4.0 - Priorites 3 & 4 : Scheduler + API REST
-======================================================
+AION v0.5.0 - Services, Notifications, Systray & Dashboard
+============================================================
 
 FICHIERS DANS CE ZIP
 --------------------
-NOUVEAUX (a creer) :
-  aion/core/scheduler.py          Planificateur APScheduler
-  aion/api/__init__.py            Module API REST
-  aion/api/server.py              Serveur FastAPI complet
-  aion/api/run_api.py             Point d entree uvicorn
-  tests/test_scheduler.py         9 tests unitaires scheduler
 
-A REMPLACER (fichiers existants) :
-  aion/core/app.py                v0.4.0 : scheduler + api start integres
-  requirements.txt                + APScheduler, fastapi, uvicorn, pydantic
-  config.yaml                     + sections api: et scheduler:
+NOUVEAUX (a creer) :
+  aion/services/cpu_monitor_service.py     CPU, RAM usage
+  aion/services/disk_monitor_service.py    Partitions disque
+  aion/services/uptime_service.py          Uptime machine
+  aion/services/docker_status_service.py   Conteneurs Docker
+  aion/notifications/__init__.py           Module notifications
+  aion/notifications/notifier.py           Gestionnaire toasts Windows
+  aion/tray/__init__.py                    Module systray
+  aion/tray/tray_app.py                    Icone systray pystray
+  aion/dashboard/__init__.py               Module dashboard
+  aion/dashboard/server.py                 Routes dashboard FastAPI
+  aion/dashboard/templates/dashboard.html  Page principale
+  aion/dashboard/templates/fragments/status.html
+  aion/dashboard/templates/fragments/services.html
+  aion/dashboard/templates/fragments/scheduler.html
+  aion/dashboard/templates/fragments/memory.html
+
+A REMPLACER :
+  aion/core/app.py      v0.5.0 avec notifier + tray + dashboard
+  requirements.txt      + psutil, pystray, Pillow, plyer, jinja2
+  config.yaml           + section notifications:
 
 INTEGRATION
 -----------
 1. Copier tous les fichiers dans votre repo (branch develop)
-2. Installer les dependances :
+2. Creer le dossier assets/ a la racine (optionnel, pour aion.ico)
+3. Installer les dependances :
      pip install -r requirements.txt
-3. Lancer les tests :
-     pytest
-4. Demarrer AION :
+4. Lancer AION :
      python main.py
-5. Dans la console AION, taper :
-     api start          -> lance http://127.0.0.1:8000
-     scheduler          -> statut du planificateur
-     schedule ping every 60s  -> planifie le service ping
+5. Taper dans la console :
+     api start   -> lance http://127.0.0.1:8000/dashboard
 
 NOUVELLES COMMANDES CONSOLE
 ----------------------------
-scheduler                         Statut du planificateur
-schedule <service> every <N>s     Planifie un service (ex: 60s)
-unschedule <job_id>               Supprime un job
-pause job <job_id>                Met un job en pause
-resume job <job_id>               Reprend un job
-api start                         Lance le serveur REST sur :8000
+run cpu_monitor          Voir CPU / RAM
+run disk_monitor         Voir les disques
+run uptime               Uptime de la machine
+run docker_status        Conteneurs Docker actifs
+notify on                Activer les toasts Windows
+notify off               Desactiver les toasts Windows
+notify status            Voir l etat des notifications
 
-API REST ENDPOINTS
-------------------
-GET  /                            Status AION
-GET  /status                      Status complet
-GET  /services                    Liste des services
-GET  /services/{name}             Detail d un service
-POST /run/{name}                  Execute un service
-POST /services/reload             Recharge les services
-GET  /memory                      Liste la memoire
-GET  /memory/stats                Stats memoire
-GET  /memory/search?q=...         Recherche memoire
-GET  /memory/{key}                Lire une cle
-PUT  /memory/{key}                Ecrire une cle
-DELETE /memory/{key}              Supprimer une cle
-GET  /scheduler                   Liste les jobs
-POST /scheduler/jobs              Ajouter un job
-DELETE /scheduler/jobs/{id}       Supprimer un job
-POST /scheduler/jobs/{id}/pause   Mettre en pause
-POST /scheduler/jobs/{id}/resume  Reprendre
+SYSTRAY
+-------
+- Icone AION dans la barre de statut Windows
+- Menu clic-droit :
+    Toggle Notifications ON/OFF
+    Ouvrir le Dashboard
+    Lancer l API REST
+    Ouvrir les logs
+    Quitter AION
 
-Docs Swagger : http://127.0.0.1:8000/docs
+DASHBOARD
+---------
+URL : http://127.0.0.1:8000/dashboard
+- Statut general (refresh auto 10s)
+- Liste des services avec bouton Run (htmx)
+- Scheduler avec etat running/paused
+- Memoire persistante
 
 GIT
 ---
 git add .
-git commit -m "AION v0.4.0 - P3+P4 : Scheduler APScheduler + API REST FastAPI"
+git commit -m "AION v0.5.0 - Services systeme, Notifications, Systray, Dashboard"
 git push origin develop

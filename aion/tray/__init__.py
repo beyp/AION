@@ -1,0 +1,1 @@
+"""AION System Tray module."""

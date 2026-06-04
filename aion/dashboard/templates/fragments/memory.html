@@ -1,0 +1,21 @@
+<h2>🧠 Memoire ({{ memory_stats.total }})
+    <button class="refresh-btn"
+            hx-get="/dashboard/memory"
+            hx-target="closest .card"
+            hx-swap="innerHTML">↻</button>
+</h2>
+<ul class="memory-list">
+{% for key, item in items.items() %}
+    <li>
+        <div>
+            <span class="memory-key">{{ key }}</span>
+            <span class="badge badge-blue" style="margin-left:6px; font-size:0.7rem;">
+                {{ item.type }}
+            </span>
+        </div>
+        <span class="memory-val">{{ item.value }}</span>
+    </li>
+{% else %}
+    <li style="color:#555;">Memoire vide.</li>
+{% endfor %}
+</ul>
