@@ -1,14 +1,18 @@
+"""Application console principale d AION v0.3.2."""
 from pathlib import Path
 
 from aion.core.config_loader import ConfigLoader
+from aion.core.event_bus import EventBus
 from aion.core.executor import ServiceExecutor
 from aion.core.logger import setup_logger
 from aion.core.registry import ServiceRegistry
 from aion.memory.memory_manager import MemoryManager
 
+AION_VERSION = "0.3.2"
+
 
 class AionApp:
-    """Main console application for AION."""
+    """Application console principale pour AION."""
 
     def __init__(self) -> None:
         self.config = ConfigLoader().load()
@@ -23,30 +27,49 @@ class AionApp:
         self.registry.discover_services()
         self.executor = ServiceExecutor(self.registry)
         self.memory = MemoryManager()
+        self.event_bus = EventBus()
+
+        self._register_event_hooks()
+
+    def _register_event_hooks(self) -> None:
+        """Enregistre les hooks internes de l EventBus."""
+        self.event_bus.subscribe("service.executed", self._on_service_executed)
+        self.event_bus.subscribe("memory.changed", self._on_memory_changed)
+
+    def _on_service_executed(self, data: dict) -> None:
+        self.logger.info("Event [service.executed]: %s", data.get("service"))
+
+    def _on_memory_changed(self, data: dict) -> None:
+        self.logger.info(
+            "Event [memory.changed]: key=%s action=%s",
+            data.get("key"),
+            data.get("action"),
+        )
 
     def run(self) -> None:
         app_config = self.config.get("app", {})
         app_name = app_config.get("name", "AION")
-        app_version = app_config.get("version", "0.3.1")
 
-        print(f"\n{app_name} v{app_version}")
+        print(f"\n{app_name} v{AION_VERSION}")
         print("AI Agent Orchestrator Node")
         print("Tape 'help' pour voir les commandes.\n")
 
-        self.logger.info("AION started")
+        self.logger.info("AION started v%s", AION_VERSION)
+        self._main_loop()
 
+    def _main_loop(self) -> None:
         while True:
             try:
                 command = input("AION> ").strip()
             except KeyboardInterrupt:
-                print("\nArrêt demandé.")
+                print("\nArret demande.")
                 break
 
             if not command:
                 continue
 
             if command in {"quit", "exit"}:
-                print("Arrêt d'AION.")
+                print("Arret d'AION.")
                 self.logger.info("AION stopped by user")
                 break
 
@@ -67,7 +90,7 @@ class AionApp:
 
         if command == "reload services":
             self.registry.reload_services()
-            return f"Services rechargés : {self.registry.count()}"
+            return f"Services recharges : {self.registry.count()}"
 
         if command.startswith("info "):
             service_name = command.replace("info ", "", 1).strip()
@@ -75,8 +98,11 @@ class AionApp:
 
         if command.startswith("run "):
             service_name = command.replace("run ", "", 1).strip()
-            return self.executor.execute(service_name)
+            result = self.executor.execute(service_name)
+            self.event_bus.emit("service.executed", {"service": service_name})
+            return result
 
+        # Memoire
         if command.startswith("remember path "):
             return self._remember_path(command)
 
@@ -86,16 +112,11 @@ class AionApp:
         if command.startswith("recall "):
             key = command.replace("recall ", "", 1).strip()
             value = self.memory.recall(key)
-
             if value is None:
-                return f"Aucune mémoire trouvée pour : {key}"
-
+                return f"Aucune memoire trouvee pour : {key}"
             return f"{key} = {value}"
 
-        if command == "memory":
-            return self._list_memory()
-
-        if command == "memory list":
+        if command in {"memory", "memory list"}:
             return self._list_memory()
 
         if command.startswith("memory list "):
@@ -115,188 +136,158 @@ class AionApp:
 
         if command.startswith("forget "):
             key = command.replace("forget ", "", 1).strip()
-
             if self.memory.forget(key):
-                return f"Mémoire supprimée : {key}"
+                self.event_bus.emit("memory.changed", {"key": key, "action": "forget"})
+                return f"Memoire supprimee : {key}"
+            return f"Aucune memoire trouvee pour : {key}"
 
-            return f"Aucune mémoire trouvée pour : {key}"
+        # EventBus
+        if command == "events":
+            return self._list_events()
 
         return (
-            "Commande inconnue. Essaie : help, services, run hello, "
-            "run system_info, status, memory list, quit"
+            "Commande inconnue. Essaie : help, services, run <service>, "
+            "events, memory list, quit"
         )
 
     def _help(self) -> str:
-        return """
+        return """\
 Commandes disponibles :
 
-help                         Affiche l'aide
+help                         Affiche l aide
 services                     Liste les services disponibles
-reload services              Recharge les services sans redémarrer AION
-info <service>               Affiche les détails d'un service
+reload services              Recharge les services sans redemarrer
+info <service>               Details d un service
 run <service>                Lance un service
-status                       Affiche le statut d'AION
+status                       Statut d AION
 
-Mémoire :
-memory                       Liste toute la mémoire permanente
-memory list                  Liste toute la mémoire permanente
-memory list <type>           Liste la mémoire d'un type précis
-memory show <clé>            Affiche le détail d'une mémoire
-memory search <texte>        Recherche dans les clés, valeurs et types
-memory stats                 Affiche les statistiques de mémoire
-remember clé=valeur          Mémorise une information
-remember path clé=chemin     Mémorise un chemin local existant
-recall clé                   Rappelle une valeur simple
-forget clé                   Supprime une mémoire
+Memoire :
+memory                       Liste toute la memoire persistante
+memory list [type]           Liste la memoire (filtrable par type)
+memory show <cle>            Detail d un element memoire
+memory search <texte>        Recherche dans la memoire
+memory stats                 Statistiques memoire
+remember cle=valeur          Memorise une information
+remember path cle=chemin     Memorise un chemin local existant
+recall cle                   Rappelle une valeur
+forget cle                   Supprime une memoire
 
-quit                         Quitte AION
-""".strip()
+EventBus :
+events                       Liste les evenements actifs
+
+quit                         Quitte AION"""
 
     def _status(self) -> str:
         stats = self.memory.stats()
-
-        return f"""
+        active_events = self.event_bus.list_events()
+        return f"""\
 AION Status
 
-Version : 0.3.1
-Services : {self.registry.count()}
-Memory : Ready
-Memory items : {stats["total"]}
-Temporary memory items : {stats["temporary_total"]}
-Event Bus : Ready
-AI : Not Connected
-""".strip()
+Version      : {AION_VERSION}
+Services     : {self.registry.count()}
+Memory       : Ready ({stats['total']} items, {stats['temporary_total']} temp)
+EventBus     : Ready ({len(active_events)} event(s) actif(s))
+Scheduler    : Not started
+AI           : Not Connected"""
 
     def _list_services(self) -> str:
         services = self.registry.list_services()
-
         if not services:
-            return "Aucun service enregistré."
-
+            return "Aucun service enregistre."
         lines = ["Services disponibles :"]
-        for service in services:
-            lines.append(f"- {service.name}: {service.description}")
-
+        for s in services:
+            lines.append(f"  - {s.name}: {s.description}")
         return "\n".join(lines)
 
     def _service_info(self, service_name: str) -> str:
         service = self.registry.get(service_name)
-
         if service is None:
             return "Service introuvable."
-
-        return f"""
-Service : {service.name}
-
-Description :
-{service.description}
-
-Permissions :
-{", ".join(service.permissions) if service.permissions else "Aucune"}
-""".strip()
+        perms = ", ".join(service.permissions) if service.permissions else "Aucune"
+        return f"""\
+Service     : {service.name}
+Description : {service.description}
+Permissions : {perms}"""
 
     def _remember_info(self, command: str) -> str:
         raw = command.replace("remember ", "", 1).strip()
-
         if "=" not in raw:
-            return "Format attendu : remember clé=valeur"
-
+            return "Format attendu : remember cle=valeur"
         key, value = raw.split("=", 1)
-        key = key.strip()
-        value = value.strip()
-
+        key, value = key.strip(), value.strip()
         if not key or not value:
-            return "La clé et la valeur sont obligatoires."
-
+            return "La cle et la valeur sont obligatoires."
         self.memory.remember(key, value, memory_type="info")
-        return f"Information mémorisée : {key}"
+        self.event_bus.emit("memory.changed", {"key": key, "action": "remember"})
+        return f"Information memorisee : {key}"
 
     def _remember_path(self, command: str) -> str:
         raw = command.replace("remember path ", "", 1).strip()
-
         if "=" not in raw:
-            return "Format attendu : remember path clé=chemin"
-
+            return "Format attendu : remember path cle=chemin"
         key, value = raw.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"')
-
+        key, value = key.strip(), value.strip().strip('"')
         if not key or not value:
-            return "La clé et le chemin sont obligatoires."
-
+            return "La cle et le chemin sont obligatoires."
         path = Path(value)
-
         if not path.exists():
             return f"Chemin introuvable : {value}"
-
         self.memory.remember(key, str(path), memory_type="path")
-        return f"Chemin mémorisé : {key}"
+        self.event_bus.emit("memory.changed", {"key": key, "action": "remember_path"})
+        return f"Chemin memorise : {key}"
 
     def _list_memory(self, memory_type: str | None = None) -> str:
-        memory = self.memory.list_memory(memory_type=memory_type)
-
-        if not memory:
-            if memory_type:
-                return f"Aucune mémoire trouvée pour le type : {memory_type}"
-            return "Mémoire vide."
-
-        title = "Mémoire AION"
-        if memory_type:
-            title += f" [{memory_type}]"
-
-        lines = [f"{title} :"]
-
-        for key, item in memory.items():
-            lines.append(
-                f"- {key} [{item.get('type', 'info')}] = {item.get('value')}"
-            )
-
+        items = self.memory.list_memory(memory_type=memory_type)
+        if not items:
+            label = f"[{memory_type}] " if memory_type else ""
+            return f"Memoire {label}vide."
+        title = f"Memoire AION{f' [{memory_type}]' if memory_type else ''} :"
+        lines = [title]
+        for key, item in items.items():
+            lines.append(f"  - {key} [{item.get('type', 'info')}] = {item.get('value')}")
         return "\n".join(lines)
 
     def _show_memory_item(self, key: str) -> str:
         item = self.memory.get_item(key)
-
         if item is None:
-            return f"Aucune mémoire trouvée pour : {key}"
-
-        return f"""
-Mémoire : {key}
-
-Type : {item.get("type", "info")}
-Valeur : {item.get("value")}
-Créée le : {item.get("created_at", "inconnu")}
-Mise à jour le : {item.get("updated_at", "inconnu")}
-""".strip()
+            return f"Aucune memoire trouvee pour : {key}"
+        return f"""\
+Memoire     : {key}
+Type        : {item.get('type', 'info')}
+Valeur      : {item.get('value')}
+Creee       : {item.get('created_at', 'inconnu')}
+Mise a jour : {item.get('updated_at', 'inconnu')}"""
 
     def _search_memory(self, query: str) -> str:
         results = self.memory.search(query)
-
         if not results:
-            return f"Aucune mémoire trouvée pour la recherche : {query}"
-
-        lines = [f"Résultats mémoire pour : {query}"]
-
+            return f"Aucune memoire trouvee pour : {query}"
+        lines = [f"Resultats pour '{query}' :"]
         for key, item in results.items():
-            lines.append(
-                f"- {key} [{item.get('type', 'info')}] = {item.get('value')}"
-            )
-
+            lines.append(f"  - {key} [{item.get('type', 'info')}] = {item.get('value')}")
         return "\n".join(lines)
 
     def _memory_stats(self) -> str:
         stats = self.memory.stats()
-
         lines = [
-            "Statistiques mémoire :",
-            f"- Total permanent : {stats['total']}",
-            f"- Total temporaire : {stats['temporary_total']}",
-            "- Par type :",
+            "Statistiques memoire :",
+            f"  Total permanent  : {stats['total']}",
+            f"  Total temporaire : {stats['temporary_total']}",
+            "  Par type :",
         ]
-
         if not stats["by_type"]:
-            lines.append("  Aucun élément")
+            lines.append("    Aucun element")
         else:
-            for memory_type, count in stats["by_type"].items():
-                lines.append(f"  - {memory_type}: {count}")
+            for t, count in stats["by_type"].items():
+                lines.append(f"    - {t}: {count}")
+        return "\n".join(lines)
 
+    def _list_events(self) -> str:
+        events = self.event_bus.list_events()
+        if not events:
+            return "Aucun evenement actif."
+        lines = ["Evenements actifs :"]
+        for event in events:
+            count = self.event_bus.subscriber_count(event)
+            lines.append(f"  - {event} ({count} abonne(s))")
         return "\n".join(lines)
