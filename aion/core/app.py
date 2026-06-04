@@ -1,4 +1,4 @@
-"""Application console principale d AION v0.3.2."""
+"""Application console principale d AION v0.4.0."""
 from pathlib import Path
 
 from aion.core.config_loader import ConfigLoader
@@ -6,9 +6,10 @@ from aion.core.event_bus import EventBus
 from aion.core.executor import ServiceExecutor
 from aion.core.logger import setup_logger
 from aion.core.registry import ServiceRegistry
+from aion.core.scheduler import AionScheduler
 from aion.memory.memory_manager import MemoryManager
 
-AION_VERSION = "0.3.2"
+AION_VERSION = "0.4.0"
 
 
 class AionApp:
@@ -28,6 +29,7 @@ class AionApp:
         self.executor = ServiceExecutor(self.registry)
         self.memory = MemoryManager()
         self.event_bus = EventBus()
+        self.scheduler = AionScheduler()
 
         self._register_event_hooks()
 
@@ -55,7 +57,12 @@ class AionApp:
         print("Tape 'help' pour voir les commandes.\n")
 
         self.logger.info("AION started v%s", AION_VERSION)
-        self._main_loop()
+        self.scheduler.start()
+
+        try:
+            self._main_loop()
+        finally:
+            self.scheduler.stop()
 
     def _main_loop(self) -> None:
         while True:
@@ -145,49 +152,87 @@ class AionApp:
         if command == "events":
             return self._list_events()
 
+        # Scheduler
+        if command == "scheduler":
+            return self._scheduler_status()
+
+        if command.startswith("schedule "):
+            return self._schedule_service(command)
+
+        if command.startswith("unschedule "):
+            job_id = command.replace("unschedule ", "", 1).strip()
+            self.scheduler.remove_job(job_id)
+            return f"Job supprime : {job_id}"
+
+        if command.startswith("pause job "):
+            job_id = command.replace("pause job ", "", 1).strip()
+            if self.scheduler.pause_job(job_id):
+                return f"Job mis en pause : {job_id}"
+            return f"Job introuvable : {job_id}"
+
+        if command.startswith("resume job "):
+            job_id = command.replace("resume job ", "", 1).strip()
+            if self.scheduler.resume_job(job_id):
+                return f"Job repris : {job_id}"
+            return f"Job introuvable : {job_id}"
+
+        # API
+        if command == "api start":
+            return self._start_api()
+
         return (
             "Commande inconnue. Essaie : help, services, run <service>, "
-            "events, memory list, quit"
+            "scheduler, schedule <service> every <N>s, api start, events, memory list, quit"
         )
 
     def _help(self) -> str:
-        return """\
-Commandes disponibles :
+        return """Commandes disponibles :
 
-help                         Affiche l aide
-services                     Liste les services disponibles
-reload services              Recharge les services sans redemarrer
-info <service>               Details d un service
-run <service>                Lance un service
-status                       Statut d AION
+help                              Affiche l aide
+services                          Liste les services disponibles
+reload services                   Recharge les services sans redemarrer
+info <service>                    Details d un service
+run <service>                     Lance un service
+status                            Statut d AION
 
 Memoire :
-memory                       Liste toute la memoire persistante
-memory list [type]           Liste la memoire (filtrable par type)
-memory show <cle>            Detail d un element memoire
-memory search <texte>        Recherche dans la memoire
-memory stats                 Statistiques memoire
-remember cle=valeur          Memorise une information
-remember path cle=chemin     Memorise un chemin local existant
-recall cle                   Rappelle une valeur
-forget cle                   Supprime une memoire
+memory                            Liste toute la memoire persistante
+memory list [type]                Liste la memoire (filtrable par type)
+memory show <cle>                 Detail d un element memoire
+memory search <texte>             Recherche dans la memoire
+memory stats                      Statistiques memoire
+remember cle=valeur               Memorise une information
+remember path cle=chemin          Memorise un chemin local existant
+recall cle                        Rappelle une valeur
+forget cle                        Supprime une memoire
 
 EventBus :
-events                       Liste les evenements actifs
+events                            Liste les evenements actifs
 
-quit                         Quitte AION"""
+Scheduler :
+scheduler                         Statut du planificateur
+schedule <service> every <N>s     Planifie un service toutes les N secondes
+unschedule <job_id>               Supprime un job planifie
+pause job <job_id>                Met un job en pause
+resume job <job_id>               Reprend un job en pause
+
+API REST :
+api start                         Demarre le serveur API REST (port 8000)
+
+quit                              Quitte AION"""
 
     def _status(self) -> str:
         stats = self.memory.stats()
         active_events = self.event_bus.list_events()
-        return f"""\
-AION Status
+        sched_state = "Running" if self.scheduler.is_running() else "Stopped"
+        return f"""AION Status
 
 Version      : {AION_VERSION}
 Services     : {self.registry.count()}
-Memory       : Ready ({stats['total']} items, {stats['temporary_total']} temp)
+Memory       : Ready ({stats["total"]} items, {stats["temporary_total"]} temp)
 EventBus     : Ready ({len(active_events)} event(s) actif(s))
-Scheduler    : Not started
+Scheduler    : {sched_state} ({self.scheduler.job_count()} jobs)
+API REST     : http://127.0.0.1:8000 (lancez "api start")
 AI           : Not Connected"""
 
     def _list_services(self) -> str:
@@ -204,8 +249,7 @@ AI           : Not Connected"""
         if service is None:
             return "Service introuvable."
         perms = ", ".join(service.permissions) if service.permissions else "Aucune"
-        return f"""\
-Service     : {service.name}
+        return f"""Service     : {service.name}
 Description : {service.description}
 Permissions : {perms}"""
 
@@ -251,12 +295,11 @@ Permissions : {perms}"""
         item = self.memory.get_item(key)
         if item is None:
             return f"Aucune memoire trouvee pour : {key}"
-        return f"""\
-Memoire     : {key}
-Type        : {item.get('type', 'info')}
-Valeur      : {item.get('value')}
-Creee       : {item.get('created_at', 'inconnu')}
-Mise a jour : {item.get('updated_at', 'inconnu')}"""
+        return f"""Memoire     : {key}
+Type        : {item.get("type", "info")}
+Valeur      : {item.get("value")}
+Creee       : {item.get("created_at", "inconnu")}
+Mise a jour : {item.get("updated_at", "inconnu")}"""
 
     def _search_memory(self, query: str) -> str:
         results = self.memory.search(query)
@@ -291,3 +334,58 @@ Mise a jour : {item.get('updated_at', 'inconnu')}"""
             count = self.event_bus.subscriber_count(event)
             lines.append(f"  - {event} ({count} abonne(s))")
         return "\n".join(lines)
+
+    def _scheduler_status(self) -> str:
+        jobs = self.scheduler.list_jobs()
+        state = "Running" if self.scheduler.is_running() else "Stopped"
+        if not jobs:
+            return f"Scheduler : {state} - Aucun job planifie."
+        lines = [f"Scheduler : {state} - {self.scheduler.job_count()} job(s) :"]
+        for job_id, info in jobs.items():
+            lines.append(
+                f"  - {job_id} -> {info['func']} (toutes les {info['interval_seconds']}s)"
+            )
+        return "\n".join(lines)
+
+    def _schedule_service(self, command: str) -> str:
+        try:
+            parts = command.replace("schedule ", "", 1).split(" every ")
+            if len(parts) != 2:
+                return "Format attendu : schedule <service> every <N>s"
+            service_name = parts[0].strip()
+            interval_str = parts[1].strip().rstrip("s")
+            interval_seconds = int(interval_str)
+        except (ValueError, IndexError):
+            return "Format attendu : schedule <service> every <N>s  (ex: schedule ping every 60s)"
+
+        service = self.registry.get(service_name)
+        if service is None:
+            return f"Service introuvable : {service_name}"
+
+        job_id = f"scheduled_{service_name}"
+        _executor = self.executor
+        _logger = self.logger
+
+        def run():
+            result = _executor.execute(service_name, {})
+            _logger.info("Scheduled job '%s' result: %s", service_name, result)
+
+        self.scheduler.add_job(job_id, run, interval_seconds=interval_seconds)
+        return f"Job planifie : {job_id} (toutes les {interval_seconds}s)"
+
+    def _start_api(self) -> str:
+        try:
+            import subprocess
+            import sys
+            subprocess.Popen(
+                [sys.executable, "-m", "uvicorn", "aion.api.server:app",
+                 "--host", "127.0.0.1", "--port", "8000"],
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+            )
+            return (
+                "Serveur API demarre -> http://127.0.0.1:8000\n"
+                "Docs disponibles sur  http://127.0.0.1:8000/docs"
+            )
+        except Exception as exc:
+            return f"Impossible de demarrer l API : {exc}"

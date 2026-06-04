@@ -1,6 +1,6 @@
 app:
   name: AION
-  version: "0.1.0"
+  version: "0.4.0"
   environment: local
 
 logging:
@@ -10,3 +10,12 @@ logging:
 security:
   require_confirmation_for_unknown_commands: true
   allow_shell_execution: false
+
+api:
+  host: 127.0.0.1
+  port: 8000
+  enabled: true
+
+scheduler:
+  timezone: America/Toronto
+  enabled: true

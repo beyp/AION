@@ -1,0 +1,67 @@
+AION v0.4.0 - Priorites 3 & 4 : Scheduler + API REST
+======================================================
+
+FICHIERS DANS CE ZIP
+--------------------
+NOUVEAUX (a creer) :
+  aion/core/scheduler.py          Planificateur APScheduler
+  aion/api/__init__.py            Module API REST
+  aion/api/server.py              Serveur FastAPI complet
+  aion/api/run_api.py             Point d entree uvicorn
+  tests/test_scheduler.py         9 tests unitaires scheduler
+
+A REMPLACER (fichiers existants) :
+  aion/core/app.py                v0.4.0 : scheduler + api start integres
+  requirements.txt                + APScheduler, fastapi, uvicorn, pydantic
+  config.yaml                     + sections api: et scheduler:
+
+INTEGRATION
+-----------
+1. Copier tous les fichiers dans votre repo (branch develop)
+2. Installer les dependances :
+     pip install -r requirements.txt
+3. Lancer les tests :
+     pytest
+4. Demarrer AION :
+     python main.py
+5. Dans la console AION, taper :
+     api start          -> lance http://127.0.0.1:8000
+     scheduler          -> statut du planificateur
+     schedule ping every 60s  -> planifie le service ping
+
+NOUVELLES COMMANDES CONSOLE
+----------------------------
+scheduler                         Statut du planificateur
+schedule <service> every <N>s     Planifie un service (ex: 60s)
+unschedule <job_id>               Supprime un job
+pause job <job_id>                Met un job en pause
+resume job <job_id>               Reprend un job
+api start                         Lance le serveur REST sur :8000
+
+API REST ENDPOINTS
+------------------
+GET  /                            Status AION
+GET  /status                      Status complet
+GET  /services                    Liste des services
+GET  /services/{name}             Detail d un service
+POST /run/{name}                  Execute un service
+POST /services/reload             Recharge les services
+GET  /memory                      Liste la memoire
+GET  /memory/stats                Stats memoire
+GET  /memory/search?q=...         Recherche memoire
+GET  /memory/{key}                Lire une cle
+PUT  /memory/{key}                Ecrire une cle
+DELETE /memory/{key}              Supprimer une cle
+GET  /scheduler                   Liste les jobs
+POST /scheduler/jobs              Ajouter un job
+DELETE /scheduler/jobs/{id}       Supprimer un job
+POST /scheduler/jobs/{id}/pause   Mettre en pause
+POST /scheduler/jobs/{id}/resume  Reprendre
+
+Docs Swagger : http://127.0.0.1:8000/docs
+
+GIT
+---
+git add .
+git commit -m "AION v0.4.0 - P3+P4 : Scheduler APScheduler + API REST FastAPI"
+git push origin develop
