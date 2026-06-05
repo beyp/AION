@@ -1,6 +1,6 @@
 app:
   name: AION
-  version: "0.5.0"
+  version: "0.7.0"
   environment: local
 
 logging:
@@ -23,3 +23,8 @@ scheduler:
 notifications:
   enabled: true
   duration_seconds: 5
+
+ai:
+  ollama_url: http://localhost:11434
+  model: mistral:latest
+  timeout: 60

@@ -1,0 +1,9 @@
+{
+  "net": "Services reseau (ping, IP, status, DNS...)",
+  "sys": "Services systeme (CPU, RAM, disque, uptime...)",
+  "docker": "Services Docker (conteneurs, images, volumes...)",
+  "ai": "Services IA (ollama, embeddings, generation...)",
+  "fs": "Services fichiers (backup, sync, scan...)",
+  "svc": "Services applicatifs (web, api, daemon...)",
+  "demo": "Services de demonstration et de test"
+}

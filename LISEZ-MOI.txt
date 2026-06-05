@@ -1,72 +1,74 @@
-AION v0.5.0 - Services, Notifications, Systray & Dashboard
-============================================================
+AION v0.7.0 - Nomenclature domaine_action + Creation de services par IA
+=========================================================================
 
 FICHIERS DANS CE ZIP
 --------------------
 
-NOUVEAUX (a creer) :
-  aion/services/cpu_monitor_service.py     CPU, RAM usage
-  aion/services/disk_monitor_service.py    Partitions disque
-  aion/services/uptime_service.py          Uptime machine
-  aion/services/docker_status_service.py   Conteneurs Docker
-  aion/notifications/__init__.py           Module notifications
-  aion/notifications/notifier.py           Gestionnaire toasts Windows
-  aion/tray/__init__.py                    Module systray
-  aion/tray/tray_app.py                    Icone systray pystray
-  aion/dashboard/__init__.py               Module dashboard
-  aion/dashboard/server.py                 Routes dashboard FastAPI
-  aion/dashboard/templates/dashboard.html  Page principale
-  aion/dashboard/templates/fragments/status.html
-  aion/dashboard/templates/fragments/services.html
-  aion/dashboard/templates/fragments/scheduler.html
-  aion/dashboard/templates/fragments/memory.html
+NOUVEAUX :
+  aion/services/domains.py          Registre des domaines (net, sys, docker...)
+  aion/services/net_ping_service.py
+  aion/services/net_myip_service.py
+  aion/services/net_status_service.py
+  aion/services/sys_cpu_service.py
+  aion/services/sys_disk_service.py
+  aion/services/sys_uptime_service.py
+  aion/services/sys_info_service.py
+  aion/services/docker_status_service.py  (mis a jour)
+  aion/services/demo_hello_service.py
+  aion/ai/service_creator.py        Creation de services via LLM
 
 A REMPLACER :
-  aion/core/app.py      v0.5.0 avec notifier + tray + dashboard
-  requirements.txt      + psutil, pystray, Pillow, plyer, jinja2
-  config.yaml           + section notifications:
+  aion/core/app.py                  v0.7.0
+  aion/ai/aion_agent.py             Prompt dynamique + AION_CREATE
+  config.yaml                       model: mistral:latest
 
-INTEGRATION
------------
-1. Copier tous les fichiers dans votre repo (branch develop)
-2. Creer le dossier assets/ a la racine (optionnel, pour aion.ico)
-3. Installer les dependances :
-     pip install -r requirements.txt
-4. Lancer AION :
-     python main.py
-5. Taper dans la console :
-     api start   -> lance http://127.0.0.1:8000/dashboard
+A SUPPRIMER (anciens noms) :
+  aion/services/ping_service.py        -> net_ping_service.py
+  aion/services/myIP_service.py        -> net_myip_service.py
+  aion/services/network_status_service.py -> net_status_service.py
+  aion/services/cpu_monitor_service.py -> sys_cpu_service.py
+  aion/services/disk_monitor_service.py -> sys_disk_service.py
+  aion/services/uptime_service.py      -> sys_uptime_service.py
+  aion/services/system_info_service.py -> sys_info_service.py
+  aion/services/hello_service.py       -> demo_hello_service.py
 
-NOUVELLES COMMANDES CONSOLE
-----------------------------
-run cpu_monitor          Voir CPU / RAM
-run disk_monitor         Voir les disques
-run uptime               Uptime de la machine
-run docker_status        Conteneurs Docker actifs
-notify on                Activer les toasts Windows
-notify off               Desactiver les toasts Windows
-notify status            Voir l etat des notifications
+NOMENCLATURE
+------------
+Format : <domaine>_<action>
+Domaines par defaut :
+  net    : reseau (ping, IP, status...)
+  sys    : systeme (CPU, disque, uptime...)
+  docker : Docker
+  ai     : IA (ollama...)
+  fs     : fichiers
+  svc    : services applicatifs
+  demo   : demonstration
 
-SYSTRAY
--------
-- Icone AION dans la barre de statut Windows
-- Menu clic-droit :
-    Toggle Notifications ON/OFF
-    Ouvrir le Dashboard
-    Lancer l API REST
-    Ouvrir les logs
-    Quitter AION
+NOUVELLES COMMANDES
+-------------------
+domains                       Lister les domaines
+domain add <nom> <desc>       Ajouter un domaine
+create service <description>  Creer un service via IA
 
-DASHBOARD
----------
-URL : http://127.0.0.1:8000/dashboard
-- Statut general (refresh auto 10s)
-- Liste des services avec bouton Run (htmx)
-- Scheduler avec etat running/paused
-- Memoire persistante
+CREATION DE SERVICE PAR IA
+--------------------------
+AION> create service surveille la temperature CPU
+AION> ai
+🤖 AION AI> cree un service qui liste les processus qui consomment le plus de RAM
 
 GIT
 ---
+# Supprimer les anciens fichiers
+git rm aion/services/ping_service.py
+git rm aion/services/myIP_service.py
+git rm aion/services/network_status_service.py
+git rm aion/services/cpu_monitor_service.py
+git rm aion/services/disk_monitor_service.py
+git rm aion/services/uptime_service.py
+git rm aion/services/system_info_service.py
+git rm aion/services/hello_service.py
+
+# Ajouter les nouveaux
 git add .
-git commit -m "AION v0.5.0 - Services systeme, Notifications, Systray, Dashboard"
+git commit -m "AION v0.7.0 - Nomenclature domaine_action + creation services par IA"
 git push origin develop
