@@ -1,0 +1,58 @@
+<div class="card">
+  <div class="card-title">⏱ Scheduler
+    <span class="badge {% if scheduler_running %}badge-green{% else %}badge-red{% endif %}" style="margin-left:8px;">
+      {% if scheduler_running %}▶ Running{% else %}⏹ Stopped{% endif %}
+    </span>
+  </div>
+
+  {% if jobs %}
+  {% for jid, info in jobs.items() %}
+  <div class="job-item" id="job-{{ jid }}">
+    <span class="job-id">{{ jid }}</span>
+    <span style="color:var(--text-dim); font-size:0.8rem;">toutes les {{ info.interval_seconds }}s</span>
+    <span id="state-{{ jid }}" class="badge {% if info.state == 'paused' %}badge-orange{% else %}badge-green{% endif %}">
+      {% if info.state == "paused" %}⏸ Paused{% else %}▶ Running{% endif %}
+    </span>
+    <button class="job-btn"
+      hx-post="/scheduler/{% if info.state == 'paused' %}resume{% else %}pause{% endif %}/{{ jid }}"
+      hx-target="#state-{{ jid }}"
+      hx-swap="outerHTML">
+      {% if info.state == "paused" %}▶{% else %}⏸{% endif %}
+    </button>
+    <button class="job-btn" style="color:var(--red);"
+      hx-post="/scheduler/remove/{{ jid }}"
+      hx-target="#job-{{ jid }}"
+      hx-swap="outerHTML">
+      🗑
+    </button>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p style="color:var(--text-dim); font-size:0.85rem;">Aucun job planifié.</p>
+  {% endif %}
+
+  <div class="sched-form" style="margin-top:20px;">
+    <select class="sched-input" id="sched-svc">
+      {% for s in services %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+    </select>
+    <input class="sched-input" id="sched-interval" type="number" value="60" min="5" style="width:80px;">
+    <span style="color:var(--text-dim); font-size:0.82rem; align-self:center;">s</span>
+    <button class="sched-submit" onclick="scheduleJob()">⏱ Planifier</button>
+    <div id="sched-result"></div>
+  </div>
+</div>
+
+<script>
+function scheduleJob() {
+  const svc = document.getElementById("sched-svc").value;
+  const interval = document.getElementById("sched-interval").value;
+  const formData = new FormData();
+  formData.append("command", `schedule ${svc} every ${interval}s`);
+  fetch("/console/run", { method: "POST", body: formData })
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById("sched-result").innerHTML = html;
+      setTimeout(() => location.reload(), 1500);
+    });
+}
+</script>

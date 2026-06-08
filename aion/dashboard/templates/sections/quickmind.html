@@ -1,0 +1,54 @@
+<div class="card">
+  <div class="card-title">✅ QuickMind
+    {% if qm_online %}
+      <span class="badge badge-green" style="margin-left:8px;">● En ligne</span>
+    {% else %}
+      <span class="badge badge-red" style="margin-left:8px;">● Hors ligne</span>
+    {% endif %}
+    <span style="color:var(--text-dim); font-size:0.8rem; margin-left:8px;">{{ task_count }} tâche(s)</span>
+  </div>
+
+  {% if not qm_online %}
+  <div class="offline-msg">
+    ❌ QuickMind non disponible sur http://localhost:8765<br>
+    <small>Lance QuickMind pour activer cette section.</small>
+  </div>
+  {% else %}
+
+  <!-- Formulaire création tâche -->
+  <form hx-post="/quickmind/task" hx-target="#qm-form-result" hx-swap="innerHTML" hx-on::after-request="this.reset()">
+    <div class="qm-form">
+      <input class="qm-input" name="title" placeholder="Nouvelle tâche..." required autofocus>
+      <select class="qm-select" name="priority">
+        <option value="normal">Normal</option>
+        <option value="high">High</option>
+        <option value="urgent">Urgent</option>
+        <option value="low">Low</option>
+      </select>
+      <button class="qm-submit" type="submit">➕ Créer</button>
+    </div>
+  </form>
+  <div id="qm-form-result"></div>
+
+  <!-- Liste des tâches -->
+  {% for task in tasks %}
+  <div class="task-item" id="task-{{ task.id }}">
+    <span class="task-prio-{{ task.priority }}">
+      {% if task.priority == "urgent" %}🔴
+      {% elif task.priority == "high" %}🟠
+      {% elif task.priority == "normal" %}🔵
+      {% else %}⚪{% endif %}
+    </span>
+    <span class="task-title">{{ task.title }}</span>
+    <span style="color:var(--text-dim); font-size:0.78rem;">{{ task.priority }}</span>
+    <button class="job-btn"
+      hx-post="/quickmind/done/{{ task.id }}"
+      hx-target="#task-{{ task.id }}"
+      hx-swap="outerHTML">
+      ✅
+    </button>
+  </div>
+  {% endfor %}
+
+  {% endif %}
+</div>

@@ -1,0 +1,10 @@
+<div class="card">
+  <div class="card-title">🖥️ System</div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+    <button class="run-btn" hx-post="/run/sys_cpu" hx-target="#sys-result" hx-swap="innerHTML">▶ sys_cpu</button>
+    <button class="run-btn" hx-post="/run/sys_disk" hx-target="#sys-result" hx-swap="innerHTML">▶ sys_disk</button>
+    <button class="run-btn" hx-post="/run/sys_uptime" hx-target="#sys-result" hx-swap="innerHTML">▶ sys_uptime</button>
+    <button class="run-btn" hx-post="/run/sys_info" hx-target="#sys-result" hx-swap="innerHTML">▶ sys_info</button>
+  </div>
+  <div id="sys-result"></div>
+</div>

@@ -1,0 +1,48 @@
+<div class="card" style="padding:0; overflow:hidden;">
+  <div class="card-title" style="padding:16px 20px 12px; border-bottom:1px solid var(--border);">
+    💬 Console AION
+    <button class="refresh-btn" onclick="document.getElementById('console-history').innerHTML=''">🗑 Clear</button>
+  </div>
+  <div class="console-wrap">
+    <div class="console-history" id="console-history">
+      <div class="console-output" style="color:var(--text-dim);">
+AION Console v0.7.0 — Tape 'help' pour la liste des commandes.
+Raccourcis : ↑↓ historique | Tab autocomplétion des services
+      </div>
+    </div>
+    <div class="console-input-row">
+      <span class="console-prompt-label">AION&gt;</span>
+      <input
+        class="console-input"
+        id="console-input"
+        type="text"
+        placeholder="run net_status, services, status, help..."
+        autofocus
+        autocomplete="off"
+        onkeydown="consoleKeyDown(event, {{ services | tojson }})"
+      >
+      <button class="console-send-btn" onclick="submitConsole(document.getElementById('console-input'))">
+        ↵ Send
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="card" style="margin-top:16px;">
+  <div class="card-title">📖 Commandes rapides</div>
+  <div style="display:flex; gap:8px; flex-wrap:wrap;">
+    {% for cmd in ["status", "services", "scheduler", "memory", "reload"] %}
+    <button class="run-btn" onclick="
+      document.getElementById('console-input').value='{{ cmd }}';
+      submitConsole(document.getElementById('console-input'))">
+      {{ cmd }}
+    </button>
+    {% endfor %}
+    {% for s in services[:8] %}
+    <button class="run-btn" style="background:color-mix(in srgb, var(--accent2) 15%, transparent); border-color:color-mix(in srgb, var(--accent2) 40%, transparent); color:var(--accent2);"
+      onclick="document.getElementById('console-input').value='run {{ s }}';submitConsole(document.getElementById('console-input'))">
+      ▶ {{ s }}
+    </button>
+    {% endfor %}
+  </div>
+</div>

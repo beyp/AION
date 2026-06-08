@@ -1,0 +1,62 @@
+<div class="stats-grid">
+  <div class="stat-box">
+    <div class="num">{{ service_count }}</div>
+    <div class="lbl">Services</div>
+  </div>
+  <div class="stat-box">
+    <div class="num">{{ memory_stats.total }}</div>
+    <div class="lbl">Mémoire</div>
+  </div>
+  <div class="stat-box">
+    <div class="num">{{ job_count }}</div>
+    <div class="lbl">Jobs</div>
+  </div>
+  <div class="stat-box">
+    <div class="num" style="color:var(--green);">{{ "ON" if scheduler_running else "OFF" }}</div>
+    <div class="lbl">Scheduler</div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-title">📊 Statut AION
+    <button class="refresh-btn"
+      onclick="fetch('/section/status').then(r=>r.text()).then(h=>{this.closest('.main')||document.getElementById('main-content').innerHTML=h;htmx.process(document.getElementById('main-content'))})">
+      ↻ Refresh
+    </button>
+  </div>
+  <div class="stat-row"><span class="stat-label">Version</span><span class="stat-value">{{ version }}</span></div>
+  <div class="stat-row"><span class="stat-label">Services</span><span class="stat-value">{{ service_count }}</span></div>
+  <div class="stat-row">
+    <span class="stat-label">Scheduler</span>
+    <span class="stat-value">
+      {% if scheduler_running %}<span class="badge badge-green">▶ Running</span>
+      {% else %}<span class="badge badge-red">⏹ Stopped</span>{% endif %}
+    </span>
+  </div>
+  <div class="stat-row"><span class="stat-label">Jobs planifiés</span><span class="stat-value">{{ job_count }}</span></div>
+  <div class="stat-row"><span class="stat-label">Mémoire persistante</span><span class="stat-value">{{ memory_stats.total }} items</span></div>
+  <div class="stat-row"><span class="stat-label">Mémoire temporaire</span><span class="stat-value">{{ memory_stats.temporary_total }} items</span></div>
+  <div class="stat-row">
+    <span class="stat-label">API REST</span>
+    <span class="stat-value">
+      <a href="/docs" target="_blank" style="color:var(--accent);">Swagger Docs ↗</a>
+    </span>
+  </div>
+</div>
+
+{% if jobs %}
+<div class="card">
+  <div class="card-title">⏱ Jobs actifs</div>
+  {% for jid, info in jobs.items() %}
+  <div class="job-item">
+    <span class="job-id">{{ jid }}</span>
+    <span style="color:var(--text-dim); font-size:0.8rem;">{{ info.interval_seconds }}s</span>
+    {% if info.state == "paused" %}
+      <span class="badge badge-orange">⏸ Paused</span>
+    {% else %}
+      <span class="badge badge-green">▶ Running</span>
+    {% endif %}
+  </div>
+  {% endfor %}
+</div>
+{% endif %}

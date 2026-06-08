@@ -1,0 +1,15 @@
+<div class="card">
+  <div class="card-title">🧠 Mémoire ({{ memory_stats.total }} items)</div>
+
+  {% if items %}
+  {% for key, item in items.items() %}
+  <div class="mem-item">
+    <span class="mem-key">{{ key }}</span>
+    <span class="mem-type">{{ item.type }}</span>
+    <span class="mem-val">{{ item.value }}</span>
+  </div>
+  {% endfor %}
+  {% else %}
+  <p style="color:var(--text-dim); font-size:0.85rem;">Mémoire vide.</p>
+  {% endif %}
+</div>

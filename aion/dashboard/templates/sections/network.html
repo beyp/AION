@@ -1,0 +1,9 @@
+<div class="card">
+  <div class="card-title">🌐 Network</div>
+  <div style="display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px;">
+    <button class="run-btn" hx-post="/run/net_status" hx-target="#net-result" hx-swap="innerHTML">▶ net_status</button>
+    <button class="run-btn" hx-post="/run/net_myip" hx-target="#net-result" hx-swap="innerHTML">▶ net_myip</button>
+    <button class="run-btn" hx-post="/run/net_ping" hx-target="#net-result" hx-swap="innerHTML">▶ net_ping</button>
+  </div>
+  <div id="net-result"></div>
+</div>

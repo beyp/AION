@@ -1,0 +1,32 @@
+<div class="card">
+  <div class="card-title">⚡ Services ({{ service_count }})
+    <button class="refresh-btn"
+      hx-post="/services/reload"
+      hx-swap="none">
+      ↺ Reload
+    </button>
+  </div>
+
+  {% for domain, svcs in grouped.items() %}
+  <div class="domain-group">
+    <div class="domain-label">[ {{ domain }} ]</div>
+    <ul class="svc-list">
+    {% for s in svcs %}
+    <li class="svc-item">
+      <span class="svc-name">{{ s.name }}</span>
+      <span class="svc-desc">{{ s.description }}</span>
+      <button class="run-btn"
+        hx-post="/run/{{ s.name }}"
+        hx-target="#result-{{ s.name }}"
+        hx-swap="innerHTML">
+        ▶ Run
+      </button>
+    </li>
+    <li style="list-style:none; padding:0 10px;">
+      <div id="result-{{ s.name }}"></div>
+    </li>
+    {% endfor %}
+    </ul>
+  </div>
+  {% endfor %}
+</div>
