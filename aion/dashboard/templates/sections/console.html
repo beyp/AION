@@ -20,7 +20,9 @@ Raccourcis : ↑↓ historique | Tab autocomplétion des services
         autofocus
         autocomplete="off"
         onkeydown="consoleKeyDown(event, {{ services | tojson }})"
+        onkeypress="if(event.key==='Enter'){event.preventDefault();submitConsole(this);}"
       >
+
       <button class="console-send-btn" onclick="submitConsole(document.getElementById('console-input'))">
         ↵ Send
       </button>
