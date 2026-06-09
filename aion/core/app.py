@@ -513,7 +513,7 @@ quit                              Quitter AION"""
         try:
             import subprocess, sys
             subprocess.Popen(
-                [sys.executable, "-m", "uvicorn", "aion.api.server:app",
+                [sys.executable, "-m", "uvicorn", "aion.dashboard.server:app",
                  "--host", "127.0.0.1", "--port", "8000"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )

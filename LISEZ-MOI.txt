@@ -1,74 +1,53 @@
-AION v0.7.0 - Nomenclature domaine_action + Creation de services par IA
-=========================================================================
+AION Dashboard v2 - Sidebar + Console + Drag & Drop
+=====================================================
 
 FICHIERS DANS CE ZIP
 --------------------
+A REMPLACER :
+  aion/dashboard/server.py
 
 NOUVEAUX :
-  aion/services/domains.py          Registre des domaines (net, sys, docker...)
-  aion/services/net_ping_service.py
-  aion/services/net_myip_service.py
-  aion/services/net_status_service.py
-  aion/services/sys_cpu_service.py
-  aion/services/sys_disk_service.py
-  aion/services/sys_uptime_service.py
-  aion/services/sys_info_service.py
-  aion/services/docker_status_service.py  (mis a jour)
-  aion/services/demo_hello_service.py
-  aion/ai/service_creator.py        Creation de services via LLM
+  aion/dashboard/templates/dashboard.html       Page principale
+  aion/dashboard/templates/sections/status.html
+  aion/dashboard/templates/sections/services.html
+  aion/dashboard/templates/sections/scheduler.html
+  aion/dashboard/templates/sections/memory.html
+  aion/dashboard/templates/sections/network.html
+  aion/dashboard/templates/sections/system.html
+  aion/dashboard/templates/sections/docker.html
+  aion/dashboard/templates/sections/quickmind.html
+  aion/dashboard/templates/sections/console.html
+  aion/api/run_dashboard.py
 
-A REMPLACER :
-  aion/core/app.py                  v0.7.0
-  aion/ai/aion_agent.py             Prompt dynamique + AION_CREATE
-  config.yaml                       model: mistral:latest
+A SUPPRIMER (anciens fragments) :
+  aion/dashboard/templates/fragments/  (dossier entier)
 
-A SUPPRIMER (anciens noms) :
-  aion/services/ping_service.py        -> net_ping_service.py
-  aion/services/myIP_service.py        -> net_myip_service.py
-  aion/services/network_status_service.py -> net_status_service.py
-  aion/services/cpu_monitor_service.py -> sys_cpu_service.py
-  aion/services/disk_monitor_service.py -> sys_disk_service.py
-  aion/services/uptime_service.py      -> sys_uptime_service.py
-  aion/services/system_info_service.py -> sys_info_service.py
-  aion/services/hello_service.py       -> demo_hello_service.py
+LANCEMENT
+---------
+  python main.py
+  AION> api start
+  -> http://127.0.0.1:8000/dashboard
 
-NOMENCLATURE
-------------
-Format : <domaine>_<action>
-Domaines par defaut :
-  net    : reseau (ping, IP, status...)
-  sys    : systeme (CPU, disque, uptime...)
-  docker : Docker
-  ai     : IA (ollama...)
-  fs     : fichiers
-  svc    : services applicatifs
-  demo   : demonstration
+OU directement :
+  python -m aion.api.run_dashboard
 
-NOUVELLES COMMANDES
--------------------
-domains                       Lister les domaines
-domain add <nom> <desc>       Ajouter un domaine
-create service <description>  Creer un service via IA
-
-CREATION DE SERVICE PAR IA
---------------------------
-AION> create service surveille la temperature CPU
-AION> ai
-🤖 AION AI> cree un service qui liste les processus qui consomment le plus de RAM
+FONCTIONNALITES
+---------------
+- Sidebar avec drag & drop (SortableJS)
+- Ordre persistant dans localStorage
+- Thème dark/light toggle (persistant)
+- Console interactive :
+    - Historique (fleches haut/bas)
+    - Autocompletion Tab des services
+    - Boutons commandes rapides
+- Section QuickMind : lister + creer taches
+- Section Scheduler : pause/resume/delete jobs
+- Refresh automatique via htmx
+- Toutes les sections chargees a la demande
 
 GIT
 ---
-# Supprimer les anciens fichiers
-git rm aion/services/ping_service.py
-git rm aion/services/myIP_service.py
-git rm aion/services/network_status_service.py
-git rm aion/services/cpu_monitor_service.py
-git rm aion/services/disk_monitor_service.py
-git rm aion/services/uptime_service.py
-git rm aion/services/system_info_service.py
-git rm aion/services/hello_service.py
-
-# Ajouter les nouveaux
-git add .
-git commit -m "AION v0.7.0 - Nomenclature domaine_action + creation services par IA"
+git add aion/dashboard/
+git rm -r aion/dashboard/templates/fragments/
+git commit -m "AION v2 Dashboard - Sidebar + Console interactive + Drag & Drop"
 git push origin develop

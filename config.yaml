@@ -27,4 +27,4 @@ notifications:
 ai:
   ollama_url: http://localhost:11434
   model: mistral:latest
-  timeout: 60
+  timeout: 300

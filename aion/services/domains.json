@@ -5,5 +5,6 @@
   "ai": "Services IA (ollama, embeddings, generation...)",
   "fs": "Services fichiers (backup, sync, scan...)",
   "svc": "Services applicatifs (web, api, daemon...)",
-  "demo": "Services de demonstration et de test"
+  "demo": "Services de demonstration et de test",
+  "qm": "Services QuickMind (taches, rappels...)"
 }
