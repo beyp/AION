@@ -265,79 +265,115 @@ class DomainRouter:
         return get_domain_help("fs")
 
     def _format_fs_result(self, raw: str) -> str:
-        """Nettoie l affichage fs_search : remplace OPEN:path|rel|n par [n] rel."""
-        lines = raw.splitlines()
-        clean = []
+        """
+        Nettoie l affichage fs_search : OPEN:path|rel|n -> [n] rel
+        Et sauvegarde les chemins dans self._memory pour fs open/edit.
+        """
+        import json as _json
+
+        lines  = raw.splitlines()
+        clean  = []
+        paths  = []   # chemins dans l ordre pour fs open <n>
+
         for line in lines:
             if "OPEN:" in line:
                 try:
-                    rest   = line.replace("  OPEN:", "", 1)
-                    parts  = rest.split("|")
-                    relpath = parts[1] if len(parts) > 1 else parts[0]
-                    idx     = parts[2] if len(parts) > 2 else "?"
+                    rest     = line.replace("  OPEN:", "", 1)
+                    parts    = rest.split("|")
+                    fullpath = parts[0].strip()
+                    relpath  = parts[1].strip() if len(parts) > 1 else fullpath
+                    idx      = parts[2].strip() if len(parts) > 2 else str(len(paths) + 1)
+                    paths.append(fullpath)
                     clean.append(f"  [{idx}] {relpath}")
                 except Exception:
                     clean.append(line)
             else:
                 clean.append(line)
-        clean.append("")
-        clean.append("  fs open <n>  : ouvrir le fichier numero n")
-        clean.append("  fs edit <n>  : ouvrir dans VS Code")
+
+        # Sauvegarder dans self._memory (instance partagee avec AionApp)
+        if paths:
+            try:
+                self._memory.remember_temp("_fs_last_results", _json.dumps(paths))
+            except Exception as exc:
+                logger.warning("DomainRouter: impossible de sauvegarder fs results: %s", exc)
+
+        if paths:
+            clean.append("")
+            clean.append("  fs open <n>  : ouvrir le fichier numero n")
+            clean.append("  fs edit <n>  : ouvrir dans VS Code")
+
         return "\n".join(clean)
 
     def _fs_open_by_index(self, args: list[str], use_vscode: bool = False) -> str:
         """Ouvre un fichier par son numero depuis le dernier fs search."""
+        action = "edit" if use_vscode else "open"
+
         if not args:
-            action = "edit" if use_vscode else "open"
             return f"Format : fs {action} <numero>  (ex: fs {action} 1)"
 
         idx_str = args[0]
         if not idx_str.isdigit():
-            return f"Format : fs {'edit' if use_vscode else 'open'} <numero>"
+            return f"Format : fs {action} <numero>"
 
         idx = int(idx_str) - 1  # 0-based
 
         try:
             import json as _json
-            from aion.memory.memory_manager import MemoryManager
-            last = MemoryManager().recall_temp("_fs_last_results")
+
+            # Utiliser self._memory (instance partagee avec AionApp)
+            last = self._memory.recall_temp("_fs_last_results")
             if not last:
                 return (
                     "fs open : aucun resultat precedent.\n"
                     "  Lance d abord : fs search <mots-cles>"
                 )
+
             paths = _json.loads(last)
             if idx < 0 or idx >= len(paths):
-                return f"fs open : numero invalide. Disponibles : 1 a {len(paths)}"
+                return (
+                    f"fs {action} : numero invalide.\n"
+                    f"  Disponibles : 1 a {len(paths)}"
+                )
 
             filepath = paths[idx]
 
             if use_vscode:
-                import subprocess
+                import subprocess, os
+                # Essayer d abord 'code' dans le PATH
                 try:
                     subprocess.Popen(["code", filepath])
-                    return f"fs edit : ouverture VS Code -> {filepath}"
+                    return f"fs edit : VS Code -> {filepath}"
                 except FileNotFoundError:
-                    return (
-                        f"fs edit : VS Code introuvable dans le PATH.\n"
-                        f"  Chemin : {filepath}\n"
-                        f"  Lance manuellement : code \"{filepath}\""
-                    )
+                    pass
+                # Chercher VS Code dans les chemins standards Windows
+                username = os.environ.get("USERNAME", "")
+                vscode_paths = [
+                    rf"C:\Users\{username}\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+                    r"C:\Program Files\Microsoft VS Code\Code.exe",
+                ]
+                for vp in vscode_paths:
+                    if os.path.exists(vp):
+                        subprocess.Popen([vp, filepath])
+                        return f"fs edit : VS Code -> {filepath}"
+                return (
+                    f"fs edit : VS Code introuvable.\n"
+                    f"  Fichier : {filepath}\n"
+                    f"  Ajoute 'code' dans le PATH ou lance : code \"{filepath}\""
+                )
             else:
                 import os
-                # Securite : ne pas ouvrir les .py, .exe, .bat directement
-                ext = filepath.rsplit(".", 1)[-1].lower() if "." in filepath else ""
+                ext     = filepath.rsplit(".", 1)[-1].lower() if "." in filepath else ""
                 blocked = {"py", "exe", "bat", "cmd", "ps1", "sh"}
                 if ext in blocked:
                     return (
-                        f"fs open : ouverture bloquee pour .{ext} (securite).\n"
-                        f"  Utilise plutot : fs edit {idx + 1}  (VS Code)"
+                        f"fs open : .{ext} bloque par securite.\n"
+                        f"  Utilise : fs edit {idx + 1}  (ouvre dans VS Code)"
                     )
                 os.startfile(filepath)
                 return f"fs open : ouverture -> {filepath}"
 
         except Exception as exc:
-            return f"fs open : erreur -> {exc}"
+            return f"fs {action} : erreur -> {exc}"
 
     # ── QM ────────────────────────────────────────────────────────────────────
 

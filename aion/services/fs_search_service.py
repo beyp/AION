@@ -71,14 +71,6 @@ class FsSearchService(BaseService):
         ]
         sorted_matches = sorted(matches)
 
-        # Sauvegarder les chemins pour "fs open <n>" en console
-        try:
-            import json as _json
-            paths_json = _json.dumps([str(p) for p in sorted_matches])
-            self._save_last_results(paths_json)
-        except Exception:
-            pass
-
         for idx, filepath in enumerate(sorted_matches, start=1):
             rel = filepath.relative_to(search_path)
             lines.append(f"  OPEN:{filepath}|{rel}|{idx}")
@@ -91,14 +83,6 @@ class FsSearchService(BaseService):
             return MemoryManager().recall(key) or ""
         except Exception:
             return ""
-
-    def _save_last_results(self, paths_json: str) -> None:
-        """Sauvegarde les derniers resultats pour fs open <n>."""
-        try:
-            from aion.memory.memory_manager import MemoryManager
-            MemoryManager().remember_temp("_fs_last_results", paths_json)
-        except Exception:
-            pass
 
     def _search(self, root: Path, keywords: list[str]) -> list[Path]:
         matches = []
