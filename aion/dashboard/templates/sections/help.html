@@ -1,0 +1,9 @@
+<div class="card">
+  <div class="card-title">📖 Aide AION
+    <button class="refresh-btn"
+      onclick="fetch('/section/help').then(r=>r.text()).then(h=>{document.getElementById('main-content').innerHTML=h; htmx.process(document.getElementById('main-content'))})">
+      ↻ Refresh
+    </button>
+  </div>
+  {{ help_html | safe }}
+</div>

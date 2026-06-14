@@ -1,0 +1,124 @@
+<div class="card">
+  <div class="card-title">🔍 Recherche Fichiers</div>
+
+  <form id="fs-form" style="margin-bottom:16px;">
+    <div style="display:flex; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+      <input
+        class="qm-input"
+        id="fs-keywords"
+        type="text"
+        placeholder="mots-clés (ex: rapport 2026)"
+        autofocus
+        required
+        style="flex:2; min-width:200px;"
+      >
+      <input
+        class="qm-input"
+        id="fs-directory"
+        type="text"
+        placeholder="Répertoire (optionnel si mémorisé)"
+        style="flex:2; min-width:200px;"
+      >
+      <input
+        class="qm-input"
+        id="fs-memkey"
+        type="text"
+        value="search_dir"
+        placeholder="Clé mémoire"
+        style="flex:1; min-width:120px;"
+      >
+      <button class="qm-submit" type="submit" style="background:var(--accent);">
+        🔍 Chercher
+      </button>
+    </div>
+    <div style="color:var(--text-dim); font-size:0.78rem; padding:4px 0;">
+      💡 Mémorise un dossier :
+      <code style="background:var(--border); padding:1px 6px; border-radius:3px;">
+        remember path search_dir=C:\ton\dossier
+      </code>
+    </div>
+  </form>
+
+  <div id="fs-results"></div>
+</div>
+
+<style>
+.fs-result-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--border) 40%, transparent);
+  margin-bottom: 4px;
+  font-size: 0.83rem;
+  transition: background 0.15s;
+}
+.fs-result-item:hover { background: color-mix(in srgb, var(--accent) 10%, transparent); }
+.fs-icon { font-size: 1rem; flex-shrink: 0; }
+.fs-name { flex: 1; color: var(--text); word-break: break-all; }
+.fs-open-btn {
+  background: color-mix(in srgb, var(--accent) 15%, transparent);
+  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
+  color: var(--accent);
+  padding: 3px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+.fs-open-btn:hover { background: var(--accent); color: white; }
+.fs-open-feedback { font-size: 0.75rem; color: var(--green); padding: 2px 6px; }
+</style>
+
+<script>
+document.getElementById("fs-form").addEventListener("submit", function(e) {
+  e.preventDefault();
+  const keywords  = document.getElementById("fs-keywords").value.trim();
+  const directory = document.getElementById("fs-directory").value.trim();
+  const memkey    = document.getElementById("fs-memkey").value.trim() || "search_dir";
+
+  if (!keywords) return;
+
+  const resultsDiv = document.getElementById("fs-results");
+  resultsDiv.innerHTML =
+    '<div style="color:var(--text-dim); padding:12px; text-align:center;">🔍 Recherche en cours...</div>';
+
+  const payload = { keywords, memory_key: memkey };
+  if (directory) payload.directory = directory;
+
+  fetch("/fs/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.text())
+  .then(html => { resultsDiv.innerHTML = html; });
+});
+
+function openFile(path, btnEl) {
+  fetch("/fs/open", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path }),
+  })
+  .then(r => r.json())
+  .then(data => {
+    if (data.ok) {
+      btnEl.textContent = "✅ Ouvert";
+      btnEl.style.background = "var(--green)";
+      btnEl.style.color = "white";
+      setTimeout(() => {
+        btnEl.textContent = "↗ Ouvrir";
+        btnEl.style.background = "";
+        btnEl.style.color = "";
+      }, 2000);
+    } else {
+      btnEl.textContent = "❌ Erreur";
+      btnEl.style.background = "var(--red)";
+      btnEl.style.color = "white";
+    }
+  });
+}
+</script>

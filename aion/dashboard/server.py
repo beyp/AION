@@ -14,6 +14,7 @@ from aion.core.executor import ServiceExecutor
 from aion.core.registry import ServiceRegistry
 from aion.core.scheduler import AionScheduler
 from aion.memory.memory_manager import MemoryManager
+from fastapi.responses import JSONResponse
 
 logger = logging.getLogger(__name__)
 
@@ -382,3 +383,84 @@ async def reload_services():
     return HTMLResponse(
         f'<span class="badge badge-green">✅ {registry.count()} services</span>'
     )
+
+@app.post("/fs/search", response_class=HTMLResponse)
+async def fs_search(request: Request):
+    """Recherche de fichiers par mots-cles."""
+    import html as h
+    body = await request.json()
+    keywords  = body.get("keywords", "")
+    directory = body.get("directory", "")
+    memory_key = body.get("memory_key", "search_dir")
+
+    result = executor.execute("fs_search", {
+        "keywords":   keywords,
+        "directory":  directory,
+        "memory_key": memory_key,
+    })
+
+    # Parser le résultat pour générer le HTML
+    lines = result.splitlines()
+    html_parts = []
+
+    for line in lines:
+        if line.startswith("  OPEN:"):
+            # Format : OPEN:<fullpath>|<relpath>
+            rest     = line.replace("  OPEN:", "", 1)
+            fullpath, relpath = rest.split("|", 1)
+            safe_path    = h.escape(fullpath)
+            safe_relpath = h.escape(relpath)
+            html_parts.append(
+                f'<div class="fs-result-item">'
+                f'  <span class="fs-icon">📄</span>'
+                f'  <span class="fs-name">{safe_relpath}</span>'
+                f'  <button class="run-btn" onclick="openFile(\'{safe_path.replace(chr(92), chr(92)+chr(92))}\')">↗ Ouvrir</button>'
+                f'</div>'
+            )
+        elif line.startswith("  ─"):
+            html_parts.append('<hr style="border-color:var(--border); margin:8px 0;">')
+        elif line.startswith("fs_search : aucun"):
+            html_parts.append(
+                f'<div style="color:var(--text-dim); padding:12px; text-align:center;">'
+                f'😶 {h.escape(line)}</div>'
+            )
+        elif line.startswith("fs_search :") or line.startswith("  Repertoire") or line.startswith("  Mots-cles"):
+            html_parts.append(
+                f'<div class="stat-row">'
+                f'<span style="color:var(--text-dim); font-size:0.82rem;">{h.escape(line)}</span>'
+                f'</div>'
+            )
+
+    if not html_parts:
+        html_parts.append(
+            f'<pre class="cmd-result">{h.escape(result)}</pre>'
+        )
+
+    # CSS pour les résultats
+    css = """
+    <style>
+    .fs-result-item {
+      display:flex; align-items:center; gap:10px;
+      padding:7px 10px; border-radius:6px;
+      background:color-mix(in srgb, var(--border) 40%, transparent);
+      margin-bottom:4px; font-size:0.83rem;
+    }
+    .fs-icon { font-size:1rem; }
+    .fs-name { flex:1; color:var(--text); word-break:break-all; }
+    </style>
+    """
+
+    return HTMLResponse(css + "\n".join(html_parts))
+
+
+@app.post("/fs/open")
+async def fs_open(request: Request):
+    """Ouvre un fichier avec l application par defaut Windows."""
+    body = await request.json()
+    path = body.get("path", "")
+    try:
+        import os
+        os.startfile(path)
+        return JSONResponse({"ok": True})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)})

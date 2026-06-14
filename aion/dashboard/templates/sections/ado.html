@@ -1,0 +1,257 @@
+<style>
+.ado-form { display:flex; gap:8px; flex-wrap:wrap; margin-bottom:12px; }
+.ado-input {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 12px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.ado-select {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  color: var(--text);
+  padding: 7px 10px;
+  border-radius: 6px;
+  font-size: 0.85rem;
+}
+.ado-btn {
+  padding: 7px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+.ado-btn-primary  { background: var(--accent);  color: white; }
+.ado-btn-success  { background: var(--green);   color: white; }
+.ado-btn-warning  { background: var(--orange);  color: white; }
+.ado-btn:hover { opacity: 0.85; }
+.ado-result {
+  font-size: 0.82rem;
+  background: color-mix(in srgb, var(--border) 50%, transparent);
+  border-radius: 6px;
+  padding: 12px;
+  white-space: pre-wrap;
+  margin-top: 8px;
+}
+.ado-item-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 10px;
+  border-radius: 6px;
+  background: color-mix(in srgb, var(--border) 40%, transparent);
+  margin-bottom: 4px;
+  font-size: 0.83rem;
+}
+.ado-id    { color: var(--accent);  font-weight: 700; min-width: 60px; }
+.ado-type  { font-size: 0.75rem; background: var(--border); padding: 1px 7px; border-radius: 8px; }
+.ado-state { font-size: 0.75rem; padding: 1px 7px; border-radius: 8px; }
+.ado-title { flex: 1; }
+.state-active     { background:color-mix(in srgb, var(--orange) 20%,transparent); color:var(--orange); }
+.state-done       { background:color-mix(in srgb, var(--green) 20%,transparent);  color:var(--green); }
+.state-new        { background:color-mix(in srgb, var(--accent) 20%,transparent); color:var(--accent); }
+.state-removed    { background:color-mix(in srgb, var(--red) 20%,transparent);    color:var(--red); }
+.state-inprogress { background:color-mix(in srgb,#9c27b0 20%,transparent);        color:#9c27b0; }
+</style>
+
+<div class="card">
+  <div class="card-title">🔵 Azure DevOps — PTG</div>
+
+  <!-- Tabs -->
+  <div style="display:flex; gap:4px; margin-bottom:16px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+    <button class="ado-btn ado-btn-primary" onclick="adoTab('search')" id="tab-search">🔍 Rechercher</button>
+    <button class="ado-btn" style="background:var(--border); color:var(--text);" onclick="adoTab('get')" id="tab-get">📋 Voir item</button>
+    <button class="ado-btn" style="background:var(--border); color:var(--text);" onclick="adoTab('update')" id="tab-update">✏️ Mettre à jour</button>
+  </div>
+
+  <!-- Tab : Rechercher -->
+  <div id="ado-tab-search">
+    <div class="ado-form">
+      <select class="ado-select" id="ado-search-project">
+        <option value="PTG - TMM D2">PTG - TMM D2</option>
+        <option value="PTG - TMM">PTG - TMM</option>
+      </select>
+      <select class="ado-select" id="ado-search-type">
+        <option value="">Tous les types</option>
+        <option value="Bug">🔴 Bug</option>
+        <option value="Task">✅ Task</option>
+        <option value="User Story">📖 User Story</option>
+        <option value="Feature">⭐ Feature</option>
+        <option value="Epic">🚀 Epic</option>
+      </select>
+      <select class="ado-select" id="ado-search-state">
+        <option value="">Tous les états</option>
+        <option value="New">New</option>
+        <option value="Active">Active</option>
+        <option value="ToDo">ToDo</option>
+        <option value="In Analysis">In Analysis</option>
+        <option value="In Progress">In Progress</option>
+        <option value="In Review">In Review</option>
+        <option value="On hold">On hold</option>
+        <option value="Resolved">Resolved</option>
+        <option value="Done">Done</option>
+        <option value="Closed">Closed</option>
+      </select>
+      <input class="ado-input" id="ado-search-assigned" placeholder="Assigné (optionnel)" style="width:150px;">
+      <input class="ado-input" id="ado-search-limit" type="number" value="10" min="1" max="50" style="width:70px;">
+      <button class="ado-btn ado-btn-primary" onclick="adoSearch()">🔍 Chercher</button>
+    </div>
+    <div id="ado-search-result"></div>
+  </div>
+
+  <!-- Tab : Voir item -->
+  <div id="ado-tab-get" style="display:none;">
+    <div class="ado-form">
+      <input class="ado-input" id="ado-get-id" type="number" placeholder="ID du work item" style="width:160px;" onkeydown="if(event.key==='Enter')adoGetItem()">
+      <button class="ado-btn ado-btn-primary" onclick="adoGetItem()">📋 Voir</button>
+    </div>
+    <div id="ado-get-result"></div>
+  </div>
+
+  <!-- Tab : Mettre à jour -->
+  <div id="ado-tab-update" style="display:none;">
+    <div class="ado-form">
+      <input class="ado-input" id="ado-update-id" type="number" placeholder="ID du work item" style="width:160px;" oninput="adoLoadItem()">
+      <div id="ado-update-info" style="color:var(--text-dim); font-size:0.82rem; align-self:center;"></div>
+    </div>
+    <div class="ado-form" style="margin-top:8px;">
+      <select class="ado-select" id="ado-update-project">
+        <option value="PTG - TMM D2">PTG - TMM D2</option>
+        <option value="PTG - TMM">PTG - TMM</option>
+      </select>
+      <select class="ado-select" id="ado-update-state">
+        <option value="">-- Choisir un état --</option>
+        <optgroup label="Bug">
+          <option value="New">New</option>
+          <option value="Active">Active</option>
+          <option value="Resolved">Resolved</option>
+          <option value="Closed">Closed</option>
+        </optgroup>
+        <optgroup label="Task / Feature">
+          <option value="ToDo">ToDo</option>
+          <option value="In Progress">In Progress</option>
+          <option value="On hold">On hold</option>
+          <option value="In Review">In Review</option>
+          <option value="Done">Done</option>
+          <option value="Removed">Removed</option>
+        </optgroup>
+        <optgroup label="User Story / Epic">
+          <option value="New">New</option>
+          <option value="In Analysis">In Analysis</option>
+          <option value="In Progress">In Progress</option>
+          <option value="In Review">In Review</option>
+          <option value="Done">Done</option>
+        </optgroup>
+      </select>
+      <input class="ado-input" id="ado-update-comment" placeholder="Commentaire (optionnel)" style="flex:1; min-width:200px;" onkeydown="if(event.key==='Enter')adoUpdate()">
+      <button class="ado-btn ado-btn-success" onclick="adoUpdate()">✅ Mettre à jour</button>
+    </div>
+    <div id="ado-update-result"></div>
+  </div>
+</div>
+
+<script>
+// ── Tabs ──────────────────────────────────────────────────────────────────────
+function adoTab(name) {
+  ["search","get","update"].forEach(t => {
+    document.getElementById(`ado-tab-${t}`).style.display = t === name ? "" : "none";
+    const btn = document.getElementById(`tab-${t}`);
+    btn.style.background = t === name ? "var(--accent)" : "var(--border)";
+    btn.style.color      = t === name ? "white" : "var(--text)";
+  });
+}
+
+// ── Recherche ─────────────────────────────────────────────────────────────────
+function adoSearch() {
+  const project  = document.getElementById("ado-search-project").value;
+  const type     = document.getElementById("ado-search-type").value;
+  const state    = document.getElementById("ado-search-state").value;
+  const assigned = document.getElementById("ado-search-assigned").value;
+  const limit    = document.getElementById("ado-search-limit").value;
+  const result   = document.getElementById("ado-search-result");
+
+  result.innerHTML = '<div style="color:var(--text-dim); padding:10px;">🔍 Recherche...</div>';
+
+  const formData = new FormData();
+  formData.append("command",
+    `run ado_search_items`
+  );
+
+  const payload = { project, limit: parseInt(limit) };
+  if (type)     payload.type     = type;
+  if (state)    payload.state    = state;
+  if (assigned) payload.assigned = assigned;
+
+  fetch("/ado/search", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.text())
+  .then(html => { result.innerHTML = html; });
+}
+
+// ── Voir item ─────────────────────────────────────────────────────────────────
+function adoGetItem() {
+  const id     = document.getElementById("ado-get-id").value;
+  const result = document.getElementById("ado-get-result");
+  if (!id) return;
+  result.innerHTML = '<div style="color:var(--text-dim);">Chargement...</div>';
+  fetch("/ado/get", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ item_id: parseInt(id) }),
+  })
+  .then(r => r.text())
+  .then(html => { result.innerHTML = html; });
+}
+
+// ── Charger info item avant update ───────────────────────────────────────────
+let adoLoadTimer = null;
+function adoLoadItem() {
+  clearTimeout(adoLoadTimer);
+  const id = document.getElementById("ado-update-id").value;
+  if (!id || id.length < 3) return;
+  adoLoadTimer = setTimeout(() => {
+    fetch("/ado/get", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ item_id: parseInt(id) }),
+    })
+    .then(r => r.text())
+    .then(html => {
+      document.getElementById("ado-update-info").innerHTML = html;
+    });
+  }, 600);
+}
+
+// ── Mettre à jour ─────────────────────────────────────────────────────────────
+function adoUpdate() {
+  const id      = document.getElementById("ado-update-id").value;
+  const state   = document.getElementById("ado-update-state").value;
+  const project = document.getElementById("ado-update-project").value;
+  const comment = document.getElementById("ado-update-comment").value;
+  const result  = document.getElementById("ado-update-result");
+
+  if (!id || !state) {
+    result.innerHTML = '<div class="alert-error">⚠️ ID et état obligatoires.</div>';
+    return;
+  }
+
+  result.innerHTML = '<div style="color:var(--text-dim);">Mise à jour en cours...</div>';
+
+  const payload = { item_id: parseInt(id), state, project };
+  if (comment) payload.comment = comment;
+
+  fetch("/ado/update", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  })
+  .then(r => r.text())
+  .then(html => { result.innerHTML = html; });
+}
+</script>

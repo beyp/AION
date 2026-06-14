@@ -1,4 +1,4 @@
-"""Application console principale d AION v0.7.0."""
+"""Application console principale d AION v0.7.1."""
 from pathlib import Path
 
 from aion.ai.aion_agent import AionAgent
@@ -6,15 +6,16 @@ from aion.ai.ollama_client import OllamaClient
 from aion.core.config_loader import ConfigLoader
 from aion.core.event_bus import EventBus
 from aion.core.executor import ServiceExecutor
+from aion.core.help_builder import build_help
 from aion.core.logger import setup_logger
 from aion.core.registry import ServiceRegistry
 from aion.core.scheduler import AionScheduler
 from aion.memory.memory_manager import MemoryManager
 from aion.notifications.notifier import AionNotifier
-from aion.services.domains import DOMAINS, add_domain, list_domains
+from aion.services.domains import DOMAINS, add_domain, list_domains, remove_domain
 from aion.tray.tray_app import AionTrayApp
 
-AION_VERSION = "0.7.0"
+AION_VERSION = "0.7.1"
 
 
 class AionApp:
@@ -140,9 +141,13 @@ class AionApp:
     def handle_command(self, command: str) -> str:
         self.logger.info("Command received: %s", command)
 
-        if command == "help":            return self._help()
-        if command == "services":        return self._list_services()
-        if command == "status":          return self._status()
+        # ── Core ──────────────────────────────────────────────────────────────
+        if command == "help":
+            return build_help(self.registry)
+        if command == "services":
+            return self._list_services()
+        if command == "status":
+            return self._status()
         if command == "reload services":
             self.registry.reload_services()
             return f"Services recharges : {self.registry.count()}"
@@ -153,16 +158,20 @@ class AionApp:
             result = self.executor.execute(svc)
             self.event_bus.emit("service.executed", {"service": svc})
             return result
+        if command.startswith("create service "):
+            desc = command.replace("create service ", "", 1).strip()
+            return self._agent._creator.create(desc)
 
-        # Domaines
+        # ── Domaines ──────────────────────────────────────────────────────────
         if command == "domains":
             return self._list_domains()
         if command.startswith("domain add "):
             return self._add_domain(command.replace("domain add ", "", 1).strip())
         if command.startswith("domain remove "):
-            return self._remove_domain(command.replace("domain remove ", "", 1).strip())
+            name = command.replace("domain remove ", "", 1).strip()
+            return f"Domaine supprime : {name}" if remove_domain(name) else f"Domaine introuvable : {name}"
 
-        # Memoire
+        # ── Memoire ───────────────────────────────────────────────────────────
         if command.startswith("remember path "):
             return self._remember_path(command)
         if command.startswith("remember "):
@@ -188,11 +197,13 @@ class AionApp:
                 return f"Memoire supprimee : {key}"
             return f"Aucune memoire pour : {key}"
 
-        # EventBus
-        if command == "events":          return self._list_events()
+        # ── EventBus ──────────────────────────────────────────────────────────
+        if command == "events":
+            return self._list_events()
 
-        # Scheduler
-        if command == "scheduler":       return self._scheduler_status()
+        # ── Scheduler ─────────────────────────────────────────────────────────
+        if command == "scheduler":
+            return self._scheduler_status()
         if command.startswith("schedule "):
             return self._schedule_service(command)
         if command.startswith("unschedule "):
@@ -205,7 +216,7 @@ class AionApp:
             jid = command.replace("resume job ", "", 1).strip()
             return f"Job repris : {jid}" if self.scheduler.resume_job(jid) else f"Job introuvable : {jid}"
 
-        # Notifications
+        # ── Notifications ─────────────────────────────────────────────────────
         if command == "notify on":
             self.notifier.enabled = True; self.tray.update_menu()
             return "Notifications activees."
@@ -220,24 +231,24 @@ class AionApp:
             self.notifier.notify_info("Test notification AION ! 🎉")
             return "Notification envoyee."
 
-        # API
-        if command == "api start":       return self._start_api()
+        # ── API ───────────────────────────────────────────────────────────────
+        if command == "api start":
+            return self._start_api()
 
-        # IA
-        if command == "ai":              return self._ai_enter_mode()
-        if command == "ai status":       return self._ai_status()
-        if command == "ai models":       return self._ai_list_models()
+        # ── IA Ollama ─────────────────────────────────────────────────────────
+        if command == "ai":
+            return self._ai_enter_mode()
+        if command == "ai status":
+            return self._ai_status()
+        if command == "ai models":
+            return self._ai_list_models()
         if command.startswith("ai model "):
             return self._ai_set_model(command.replace("ai model ", "", 1).strip())
         if command.startswith("ask "):
             return self._agent.ask(command.replace("ask ", "", 1).strip())
-        if command.startswith("create service "):
-            desc = command.replace("create service ", "", 1).strip()
-            return self._agent._creator.create(desc)
 
         return (
-            "Commande inconnue. Essaie : help, services, domains, "
-            "run <service>, ai, ask <question>, create service <description>, quit"
+            "Commande inconnue. Tape 'help' pour la liste complete des commandes."
         )
 
     # ── Domaines ──────────────────────────────────────────────────────────────
@@ -247,9 +258,9 @@ class AionApp:
         lines = [f"Domaines AION ({len(domains)}) :"]
         for name, desc in domains.items():
             services = [s.name for s in self.registry.list_services()
-                       if s.name.startswith(f"{name}_")]
+                        if s.name.startswith(f"{name}_")]
             svc_str = f" [{len(services)} service(s)]" if services else " [aucun service]"
-            lines.append(f"  - {name:<10} : {desc}{svc_str}")
+            lines.append(f"  - {name:<12} : {desc}{svc_str}")
         return "\n".join(lines)
 
     def _add_domain(self, args: str) -> str:
@@ -259,15 +270,7 @@ class AionApp:
         name, description = parts[0].strip(), parts[1].strip()
         if not name.isalpha() or not name.islower():
             return "Le nom du domaine doit etre en minuscules, lettres uniquement."
-        if add_domain(name, description):
-            return f"Domaine ajoute : {name} - {description}"
-        return f"Le domaine {name} existe deja."
-
-    def _remove_domain(self, name: str) -> str:
-        from aion.services.domains import remove_domain
-        if remove_domain(name):
-            return f"Domaine supprime : {name}"
-        return f"Domaine introuvable : {name}"
+        return f"Domaine ajoute : {name}" if add_domain(name, description) else f"Le domaine {name} existe deja."
 
     # ── IA ────────────────────────────────────────────────────────────────────
 
@@ -277,10 +280,9 @@ class AionApp:
         self._ai_mode = True
         return (
             f"Mode IA active (modele : {self._ollama.model})\n"
-            f"Parle naturellement en francais.\n"
-            f"  exit ai          Retour console\n"
-            f"  ai clear         Effacer historique\n"
-            f"  ai history       Taille historique"
+            f"  exit ai      Retour console\n"
+            f"  ai clear     Effacer historique\n"
+            f"  ai history   Taille historique"
         )
 
     def _ai_status(self) -> str:
@@ -291,8 +293,7 @@ class AionApp:
             f"URL    : {self._ollama.base_url}\n"
             f"Modele : {self._ollama.model}\n"
             f"Modeles: {', '.join(models) if models else 'aucun'}\n"
-            f"Historique : {self._agent.history_count()} message(s)\n"
-            f"Mode IA : {'actif' if self._ai_mode else 'inactif'}"
+            f"Historique : {self._agent.history_count()} message(s)"
         )
 
     def _ai_set_model(self, model_name: str) -> str:
@@ -308,62 +309,21 @@ class AionApp:
             return "Aucun modele. Essaie : ollama pull mistral"
         lines = ["Modeles Ollama :"]
         for m in models:
-            marker = " ← actif" if m.startswith(self._ollama.model) else ""
+            marker = " <- actif" if m.startswith(self._ollama.model) else ""
             lines.append(f"  - {m}{marker}")
         return "\n".join(lines)
 
-    # ── Helpers ───────────────────────────────────────────────────────────────
-
-    def _help(self) -> str:
-        return """Commandes disponibles :
-
-help                              Affiche l aide
-services                          Liste les services
-domains                           Liste les domaines
-domain add <nom> <desc>           Ajouter un domaine
-domain remove <nom>               Supprimer un domaine
-reload services                   Recharge les services
-info <service>                    Details d un service
-run <service>                     Lance un service
-status                            Statut d AION
-
-Memoire :
-memory / memory list [type]       Lister
-memory show/search/stats          Details
-remember cle=valeur               Memoriser
-recall cle / forget cle           Lire / Supprimer
-
-Scheduler :
-scheduler                         Statut
-schedule <service> every <N>s     Planifier
-unschedule / pause / resume job   Gerer les jobs
-
-Notifications :
-notify on/off/status/test         Gerer les notifications
-
-IA Ollama :
-ai                                Mode conversation
-ask <question>                    Question one-shot
-create service <description>      Creer un nouveau service via IA
-ai status/models                  Etat Ollama
-ai model <nom>                    Changer de modele
-
-API :
-api start                         Demarrer (port 8000)
-                                  Dashboard : http://127.0.0.1:8000/dashboard
-
-quit                              Quitter AION"""
+    # ── Status ────────────────────────────────────────────────────────────────
 
     def _status(self) -> str:
         stats = self.memory.stats()
         sched_state = "Running" if self.scheduler.is_running() else "Stopped"
         ai_state = "Connecte" if self._ollama.is_available() else "Non disponible"
-        domains_count = len(DOMAINS)
         return (
             f"AION Status\n\n"
             f"Version       : {AION_VERSION}\n"
             f"Services      : {self.registry.count()}\n"
-            f"Domaines      : {domains_count}\n"
+            f"Domaines      : {len(DOMAINS)}\n"
             f"Memory        : {stats['total']} items\n"
             f"Scheduler     : {sched_state} ({self.scheduler.job_count()} jobs)\n"
             f"Notifications : {'ON' if self.notifier.enabled else 'OFF'}\n"
@@ -375,7 +335,6 @@ quit                              Quitter AION"""
         services = self.registry.list_services()
         if not services:
             return "Aucun service enregistre."
-        # Grouper par domaine
         from aion.services.domains import get_domain
         grouped: dict[str, list] = {}
         for s in services:
@@ -392,9 +351,14 @@ quit                              Quitter AION"""
         s = self.registry.get(name)
         if s is None:
             return "Service introuvable."
-        perms = ", ".join(s.permissions) if s.permissions else "Aucune"
+        perms  = ", ".join(s.permissions) if s.permissions else "Aucune"
         domain = getattr(s, "domain", "?")
-        return f"Service     : {s.name}\nDomaine     : {domain}\nDescription : {s.description}\nPermissions : {perms}"
+        return (
+            f"Service     : {s.name}\n"
+            f"Domaine     : {domain}\n"
+            f"Description : {s.description}\n"
+            f"Permissions : {perms}"
+        )
 
     def _remember_info(self, command: str) -> str:
         raw = command.replace("remember ", "", 1).strip()
@@ -517,11 +481,10 @@ quit                              Quitter AION"""
                  "--host", "127.0.0.1", "--port", "8000"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             )
-            self.notifier.notify_info("API demarree -> http://127.0.0.1:8000")
+            self.notifier.notify_info("Dashboard demarre -> http://127.0.0.1:8000")
             return (
-                "API demarree    -> http://127.0.0.1:8000\n"
-                "Dashboard       -> http://127.0.0.1:8000/dashboard\n"
-                "Swagger         -> http://127.0.0.1:8000/docs"
+                "Dashboard demarre -> http://127.0.0.1:8000/dashboard\n"
+                "Swagger           -> http://127.0.0.1:8000/docs"
             )
         except Exception as exc:
             return f"Erreur API : {exc}"
