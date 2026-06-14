@@ -1,13 +1,16 @@
 <div class="card" style="padding:0; overflow:hidden;">
   <div class="card-title" style="padding:16px 20px 12px; border-bottom:1px solid var(--border);">
     💬 Console AION
-    <button class="refresh-btn" onclick="document.getElementById('console-history').innerHTML=''">🗑 Clear</button>
+    <button class="refresh-btn" onclick="document.getElementById('console-history').innerHTML=''">
+      🗑 Clear
+    </button>
   </div>
   <div class="console-wrap">
     <div class="console-history" id="console-history">
       <div class="console-output" style="color:var(--text-dim);">
-AION Console v0.7.0 — Tape 'help' pour la liste des commandes.
-Raccourcis : ↑↓ historique | Tab autocomplétion des services
+AION Console v0.7.2 — Syntaxe naturelle par domaine
+  Raccourcis : fleches haut/bas = historique | Tab = autocompletion
+  Aide       : ado ? | net ? | sys ? | fs ? | qm ?
       </div>
     </div>
     <div class="console-input-row">
@@ -16,35 +19,86 @@ Raccourcis : ↑↓ historique | Tab autocomplétion des services
         class="console-input"
         id="console-input"
         type="text"
-        placeholder="run net_status, services, status, help..."
+        placeholder="ado get item 191614 | net status | qm add Titre | fs search mot | sys disk | help"
         autofocus
         autocomplete="off"
-        onkeydown="consoleKeyDown(event, {{ services | tojson }})"
-        onkeypress="if(event.key==='Enter'){event.preventDefault();submitConsole(this);}"
+        data-services="{{ services | tojson }}"
+        onkeydown="consoleKeyDown(event)"
       >
-
-      <button class="console-send-btn" onclick="submitConsole(document.getElementById('console-input'))">
-        ↵ Send
+      <button class="console-send-btn"
+        onclick="submitConsole(document.getElementById('console-input'))">
+        ↵
       </button>
     </div>
   </div>
 </div>
 
+<!-- Raccourcis rapides par domaine -->
 <div class="card" style="margin-top:16px;">
-  <div class="card-title">📖 Commandes rapides</div>
-  <div style="display:flex; gap:8px; flex-wrap:wrap;">
-    {% for cmd in ["status", "services", "scheduler", "memory", "reload"] %}
-    <button class="run-btn" onclick="
-      document.getElementById('console-input').value='{{ cmd }}';
-      submitConsole(document.getElementById('console-input'))">
-      {{ cmd }}
-    </button>
-    {% endfor %}
-    {% for s in services[:8] %}
-    <button class="run-btn" style="background:color-mix(in srgb, var(--accent2) 15%, transparent); border-color:color-mix(in srgb, var(--accent2) 40%, transparent); color:var(--accent2);"
-      onclick="document.getElementById('console-input').value='run {{ s }}';submitConsole(document.getElementById('console-input'))">
-      ▶ {{ s }}
-    </button>
-    {% endfor %}
+  <div class="card-title">⚡ Raccourcis rapides</div>
+
+  <div style="margin-bottom:10px;">
+    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
+      ADO
+    </span>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+      <button class="run-btn" onclick="quickCmd('ado list')">ado list</button>
+      <button class="run-btn" onclick="quickCmd('ado my')">ado my</button>
+      <button class="run-btn" onclick="quickCmd('ado ?')">ado ?</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px;">
+    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
+      NET
+    </span>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+      <button class="run-btn" onclick="quickCmd('net status')">net status</button>
+      <button class="run-btn" onclick="quickCmd('net myip')">net myip</button>
+      <button class="run-btn" onclick="quickCmd('net ping')">net ping</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px;">
+    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
+      SYS
+    </span>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+      <button class="run-btn" onclick="quickCmd('sys cpu')">sys cpu</button>
+      <button class="run-btn" onclick="quickCmd('sys disk')">sys disk</button>
+      <button class="run-btn" onclick="quickCmd('sys uptime')">sys uptime</button>
+    </div>
+  </div>
+
+  <div style="margin-bottom:10px;">
+    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
+      QM
+    </span>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+      <button class="run-btn" onclick="quickCmd('qm list')">qm list</button>
+      <button class="run-btn" onclick="quickCmd('qm health')">qm health</button>
+      <button class="run-btn" onclick="quickCmd('qm ?')">qm ?</button>
+    </div>
+  </div>
+
+  <div>
+    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
+      CORE
+    </span>
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+      <button class="run-btn" onclick="quickCmd('status')">status</button>
+      <button class="run-btn" onclick="quickCmd('services')">services</button>
+      <button class="run-btn" onclick="quickCmd('scheduler')">scheduler</button>
+      <button class="run-btn" onclick="quickCmd('shortcuts')">shortcuts</button>
+      <button class="run-btn" onclick="quickCmd('memory')">memory</button>
+    </div>
   </div>
 </div>
+
+<script>
+function quickCmd(cmd) {
+  const input = document.getElementById('console-input');
+  input.value = cmd;
+  submitConsole(input);
+}
+</script>

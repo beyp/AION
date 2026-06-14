@@ -1,0 +1,7 @@
+Dans aion/dashboard/templates/dashboard.html
+Ajoute cette entree dans <ul id="nav-list"> apres QuickMind :
+
+<li class="nav-item" data-section="ado" onclick="loadSection(this)">
+  <span class="nav-icon">&#x1F535;</span> Azure DevOps
+  <span class="drag-handle">&#x22FF;</span>
+</li>

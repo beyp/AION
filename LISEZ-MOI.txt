@@ -1,53 +1,78 @@
-AION Dashboard v2 - Sidebar + Console + Drag & Drop
-=====================================================
+AION v0.7.2 - Domain Router + Syntaxe naturelle
+================================================
 
 FICHIERS DANS CE ZIP
 --------------------
-A REMPLACER :
-  aion/dashboard/server.py
-
 NOUVEAUX :
-  aion/dashboard/templates/dashboard.html       Page principale
-  aion/dashboard/templates/sections/status.html
-  aion/dashboard/templates/sections/services.html
-  aion/dashboard/templates/sections/scheduler.html
-  aion/dashboard/templates/sections/memory.html
-  aion/dashboard/templates/sections/network.html
-  aion/dashboard/templates/sections/system.html
-  aion/dashboard/templates/sections/docker.html
-  aion/dashboard/templates/sections/quickmind.html
-  aion/dashboard/templates/sections/console.html
-  aion/api/run_dashboard.py
+  aion/core/command_parser.py          Parser de commandes naturelles
+  aion/core/domain_router.py           Router par domaine
 
-A SUPPRIMER (anciens fragments) :
-  aion/dashboard/templates/fragments/  (dossier entier)
+A REMPLACER :
+  aion/core/app.py                     v0.7.2 avec DomainRouter integre
+  aion/dashboard/templates/sections/console.html  Raccourcis par domaine
+  powershell/ado_functions.ps1         Fix encodage + ado-help ajoute
 
-LANCEMENT
----------
-  python main.py
-  AION> api start
-  -> http://127.0.0.1:8000/dashboard
+INSTRUCTIONS :
+  SIDEBAR_ADO_PATCH.txt                Ajouter ADO dans la sidebar
+  SERVER_CONSOLE_PATCH.txt             Mettre a jour server.py console
 
-OU directement :
-  python -m aion.api.run_dashboard
+NOUVELLES COMMANDES
+-------------------
+  ado get item 191614
+  ado status change 191614 Done
+  ado status change 191614 "In Progress" --comment "En cours"
+  ado list
+  ado list --state "In Progress"
+  ado list --type Bug --state Active
+  ado my
+  ado open 191614
+  ado project "PTG - TMM"
+  ado ?                    <- aide du domaine
+  ado get ?                <- aide de l action
 
-FONCTIONNALITES
----------------
-- Sidebar avec drag & drop (SortableJS)
-- Ordre persistant dans localStorage
-- Thème dark/light toggle (persistant)
-- Console interactive :
-    - Historique (fleches haut/bas)
-    - Autocompletion Tab des services
-    - Boutons commandes rapides
-- Section QuickMind : lister + creer taches
-- Section Scheduler : pause/resume/delete jobs
-- Refresh automatique via htmx
-- Toutes les sections chargees a la demande
+  net status
+  net ping
+  net ping 192.168.1.1
+  net myip
+
+  sys cpu
+  sys disk
+  sys uptime
+  sys info
+
+  fs search Rapport
+  fs search Rapport 2026
+  fs search Rapport --path C:\Users\docs
+  fs search Rapport --key docs
+
+  qm add "RDV demain 10h"
+  qm add "RDV" --priority urgent
+  qm add "RDV" --priority high --category Travail
+  qm list
+  qm list --priority urgent
+  qm done 5
+  qm health
+  qm ?
+
+  docker status
+  shortcuts              <- tous les raccourcis
+
+RETROCOMPATIBILITE
+------------------
+  run <service>          fonctionne toujours
+  run <service> 191614   ID numerique auto-detecte
+  run <service> {"key": "val"}  JSON toujours supporte
+
+POWERSHELL
+----------
+  Fix encodage (emojis remplaces par texte)
+  Nouvel alias adoh = ado-help
 
 GIT
 ---
-git add aion/dashboard/
-git rm -r aion/dashboard/templates/fragments/
-git commit -m "AION v2 Dashboard - Sidebar + Console interactive + Drag & Drop"
+git add aion/core/command_parser.py aion/core/domain_router.py
+git add aion/core/app.py
+git add aion/dashboard/templates/sections/console.html
+git add powershell/ado_functions.ps1
+git commit -m "AION v0.7.2 - Domain Router + syntaxe naturelle ado/net/sys/fs/qm/docker"
 git push origin develop

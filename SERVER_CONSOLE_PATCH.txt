@@ -1,0 +1,24 @@
+Dans aion/dashboard/server.py
+Dans la fonction console_run(), AVANT le bloc elif cmd == 'help':
+Ajouter ce bloc pour router les commandes de domaine :
+
+    # ── Domain Router ──────────────────────────────────────────────────────
+    elif any(cmd.startswith(d + " ") or cmd == d or cmd == d + " ?"
+             for d in ("ado", "net", "sys", "fs", "qm", "docker")):
+        from aion.core.domain_router import DomainRouter
+        dr = DomainRouter(executor, memory)
+        result = dr.dispatch(cmd)
+        if result:
+            pass  # result est deja defini
+        else:
+            result = f"Commande non reconnue : {cmd}"
+
+Et aussi ajouter la route section ado :
+
+    @app.get("/section/ado", response_class=HTMLResponse)
+    async def section_ado(request: Request):
+        return templates.TemplateResponse(
+            request=request,
+            name="sections/ado.html",
+            context={},
+        )
