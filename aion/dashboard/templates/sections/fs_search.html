@@ -97,7 +97,7 @@ document.getElementById("fs-form").addEventListener("submit", function(e) {
   .then(html => { resultsDiv.innerHTML = html; });
 });
 
-function openFile(path, btnEl) {
+window.openFile = function(path, btnEl) {
   fetch("/fs/open", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

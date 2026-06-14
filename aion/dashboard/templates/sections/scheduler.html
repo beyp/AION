@@ -43,7 +43,7 @@
 </div>
 
 <script>
-function scheduleJob() {
+window.scheduleJob = function() {
   const svc = document.getElementById("sched-svc").value;
   const interval = document.getElementById("sched-interval").value;
   const formData = new FormData();

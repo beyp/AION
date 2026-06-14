@@ -132,176 +132,176 @@ class AionApp:
             self.scheduler.stop()
             self.tray.stop()
 
-def _main_loop(self) -> None:
-    # Tenter d utiliser prompt_toolkit pour l autocompletion
-    try:
+    def _main_loop(self) -> None:
+        # Tenter d utiliser prompt_toolkit pour l autocompletion
+        try:
+            from prompt_toolkit import PromptSession
+            from prompt_toolkit.completion import WordCompleter
+            from prompt_toolkit.history import InMemoryHistory
+            from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+
+            self._use_prompt_toolkit = True
+        except ImportError:
+            self._use_prompt_toolkit = False
+
+        if self._use_prompt_toolkit:
+            self._main_loop_pt()
+        else:
+            self._main_loop_basic()
+
+    def _build_completer(self):
+        """Construit la liste de completions dynamiquement."""
+        from prompt_toolkit.completion import Completer, Completion
+
+        commands = [
+            # Core
+            "help", "shortcuts", "status", "services", "domains", "reload services",
+            "scheduler", "memory", "events", "api start", "notify on", "notify off",
+            "notify status", "notify test", "quit",
+            # AI
+            "ai", "ai status", "ai models", "ask ",
+            # Memory
+            "remember ", "remember path ", "recall ", "forget ",
+            "memory list", "memory show ", "memory search ", "memory stats",
+            # Scheduler
+            "schedule ", "unschedule ", "pause job ", "resume job ",
+            # ADO
+            "ado get item ",
+            "ado status change ",
+            "ado list",
+            "ado list --state ",
+            "ado list --type Bug",
+            "ado list --type Task",
+            "ado list --type User Story",
+            "ado list --type Feature",
+            "ado list --type Epic",
+            "ado my",
+            "ado my --state ",
+            "ado open ",
+            "ado project ",
+            "ado ?",
+            # NET
+            "net status", "net myip", "net ping", "net ping ",
+            "net ?",
+            # SYS
+            "sys cpu", "sys disk", "sys uptime", "sys info",
+            "sys ?",
+            # FS
+            "fs search ", "fs ?",
+            # QM
+            "qm add ", "qm list", "qm list --priority ",
+            "qm done ", "qm health", "qm ?",
+            # DOCKER
+            "docker status",
+        ]
+
+        # Ajouter les services dynamiquement
+        for svc in self.registry.list_services():
+            commands.append(f"run {svc.name}")
+
+        class AionCompleter(Completer):
+            def get_completions(self, document, complete_event):
+                text = document.text_before_cursor
+                text_lower = text.lower()
+                for cmd in commands:
+                    if cmd.lower().startswith(text_lower) and cmd.lower() != text_lower:
+                        yield Completion(
+                            cmd[len(text):],
+                            start_position=0,
+                            display=cmd,
+                            display_meta=_get_hint(cmd),
+                        )
+
+        return AionCompleter()
+
+    def _main_loop_pt(self) -> None:
+        """Boucle principale avec prompt_toolkit (autocompletion)."""
         from prompt_toolkit import PromptSession
-        from prompt_toolkit.completion import WordCompleter
         from prompt_toolkit.history import InMemoryHistory
         from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
+        from prompt_toolkit.styles import Style
 
-        self._use_prompt_toolkit = True
-    except ImportError:
-        self._use_prompt_toolkit = False
+        style = Style.from_dict({
+            "prompt":    "ansicyan bold",
+            "": "ansiwhite",
+        })
 
-    if self._use_prompt_toolkit:
-        self._main_loop_pt()
-    else:
-        self._main_loop_basic()
+        session = PromptSession(
+            history=InMemoryHistory(),
+            auto_suggest=AutoSuggestFromHistory(),
+            completer=self._build_completer(),
+            complete_while_typing=True,
+            style=style,
+        )
 
-def _build_completer(self):
-    """Construit la liste de completions dynamiquement."""
-    from prompt_toolkit.completion import Completer, Completion
+        while True:
+            if self._stop_requested:
+                print("\nArret demande via systray.")
+                break
+            try:
+                prompt_str = "🤖 AION AI> " if self._ai_mode else "AION> "
+                command = session.prompt(prompt_str).strip()
+            except KeyboardInterrupt:
+                print("\nArret demande.")
+                break
+            except EOFError:
+                break
 
-    commands = [
-        # Core
-        "help", "shortcuts", "status", "services", "domains", "reload services",
-        "scheduler", "memory", "events", "api start", "notify on", "notify off",
-        "notify status", "notify test", "quit",
-        # AI
-        "ai", "ai status", "ai models", "ask ",
-        # Memory
-        "remember ", "remember path ", "recall ", "forget ",
-        "memory list", "memory show ", "memory search ", "memory stats",
-        # Scheduler
-        "schedule ", "unschedule ", "pause job ", "resume job ",
-        # ADO
-        "ado get item ",
-        "ado status change ",
-        "ado list",
-        "ado list --state ",
-        "ado list --type Bug",
-        "ado list --type Task",
-        "ado list --type User Story",
-        "ado list --type Feature",
-        "ado list --type Epic",
-        "ado my",
-        "ado my --state ",
-        "ado open ",
-        "ado project ",
-        "ado ?",
-        # NET
-        "net status", "net myip", "net ping", "net ping ",
-        "net ?",
-        # SYS
-        "sys cpu", "sys disk", "sys uptime", "sys info",
-        "sys ?",
-        # FS
-        "fs search ", "fs ?",
-        # QM
-        "qm add ", "qm list", "qm list --priority ",
-        "qm done ", "qm health", "qm ?",
-        # DOCKER
-        "docker status",
-    ]
-
-    # Ajouter les services dynamiquement
-    for svc in self.registry.list_services():
-        commands.append(f"run {svc.name}")
-
-    class AionCompleter(Completer):
-        def get_completions(self, document, complete_event):
-            text = document.text_before_cursor
-            text_lower = text.lower()
-            for cmd in commands:
-                if cmd.lower().startswith(text_lower) and cmd.lower() != text_lower:
-                    yield Completion(
-                        cmd[len(text):],
-                        start_position=0,
-                        display=cmd,
-                        display_meta=_get_hint(cmd),
-                    )
-
-    return AionCompleter()
-
-def _main_loop_pt(self) -> None:
-    """Boucle principale avec prompt_toolkit (autocompletion)."""
-    from prompt_toolkit import PromptSession
-    from prompt_toolkit.history import InMemoryHistory
-    from prompt_toolkit.auto_suggest import AutoSuggestFromHistory
-    from prompt_toolkit.styles import Style
-
-    style = Style.from_dict({
-        "prompt":    "ansicyan bold",
-        "": "ansiwhite",
-    })
-
-    session = PromptSession(
-        history=InMemoryHistory(),
-        auto_suggest=AutoSuggestFromHistory(),
-        completer=self._build_completer(),
-        complete_while_typing=True,
-        style=style,
-    )
-
-    while True:
-        if self._stop_requested:
-            print("\nArret demande via systray.")
-            break
-        try:
-            prompt_str = "🤖 AION AI> " if self._ai_mode else "AION> "
-            command = session.prompt(prompt_str).strip()
-        except KeyboardInterrupt:
-            print("\nArret demande.")
-            break
-        except EOFError:
-            break
-
-        if not command:
-            continue
-        if command in {"quit", "exit"}:
-            print("Arret d'AION.")
-            break
-
-        if self._ai_mode:
-            if command == "exit ai":
-                self._ai_mode = False
-                print("Mode IA desactive.")
+            if not command:
                 continue
-            if command == "ai clear":
-                self._agent.clear_history()
-                print("Historique efface.")
+            if command in {"quit", "exit"}:
+                print("Arret d'AION.")
+                break
+
+            if self._ai_mode:
+                if command == "exit ai":
+                    self._ai_mode = False
+                    print("Mode IA desactive.")
+                    continue
+                if command == "ai clear":
+                    self._agent.clear_history()
+                    print("Historique efface.")
+                    continue
+                if command == "ai history":
+                    print(f"Historique : {self._agent.history_count()} message(s)")
+                    continue
+                print(self._agent.ask(command))
                 continue
-            if command == "ai history":
-                print(f"Historique : {self._agent.history_count()} message(s)")
+
+            print(self.handle_command(command))
+
+    def _main_loop_basic(self) -> None:
+        """Boucle de fallback sans autocompletion."""
+        while True:
+            if self._stop_requested:
+                print("\nArret demande via systray.")
+                break
+            try:
+                prompt_str = "🤖 AION AI> " if self._ai_mode else "AION> "
+                command = input(prompt_str).strip()
+            except (KeyboardInterrupt, EOFError):
+                print("\nArret demande.")
+                break
+
+            if not command:
                 continue
-            print(self._agent.ask(command))
-            continue
+            if command in {"quit", "exit"}:
+                print("Arret d'AION.")
+                break
 
-        print(self.handle_command(command))
-
-def _main_loop_basic(self) -> None:
-    """Boucle de fallback sans autocompletion."""
-    while True:
-        if self._stop_requested:
-            print("\nArret demande via systray.")
-            break
-        try:
-            prompt_str = "🤖 AION AI> " if self._ai_mode else "AION> "
-            command = input(prompt_str).strip()
-        except (KeyboardInterrupt, EOFError):
-            print("\nArret demande.")
-            break
-
-        if not command:
-            continue
-        if command in {"quit", "exit"}:
-            print("Arret d'AION.")
-            break
-
-        if self._ai_mode:
-            if command == "exit ai":
-                self._ai_mode = False
-                print("Mode IA desactive.")
+            if self._ai_mode:
+                if command == "exit ai":
+                    self._ai_mode = False
+                    print("Mode IA desactive.")
+                    continue
+                if command == "ai clear":
+                    self._agent.clear_history()
+                    print("Historique efface.")
+                    continue
+                print(self._agent.ask(command))
                 continue
-            if command == "ai clear":
-                self._agent.clear_history()
-                print("Historique efface.")
-                continue
-            print(self._agent.ask(command))
-            continue
 
-        print(self.handle_command(command))
+            print(self.handle_command(command))
 
 
     def handle_command(self, command: str) -> str:

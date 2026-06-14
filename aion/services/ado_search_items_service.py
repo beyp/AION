@@ -155,7 +155,7 @@ class AdoSearchItemsService(BaseService):
 
                 type_icons = {
                     "Bug":        "🔴 Bug    ",
-                    "Task":       "🟢 Task   ",
+                    "Task":       "🟡 Task   ",
                     "User Story": "🔵 Story  ",
                     "Feature":    "🟣 Feature",
                     "Epic":       "🟠 Epic   ",
@@ -163,7 +163,7 @@ class AdoSearchItemsService(BaseService):
                 }
                 type_label = type_icons.get(wi_t, f"   {wi_t[:8]}")
 
-                line = f"  {type_label}  #{wi_id:<8} [{wi_state:<16}] {title}"
+                line = f"  {type_label}  #{wi_id:<8} [{wi_state:<12}] {title}"
                 if assignee:
                     line += f"  -> {assignee}"
                 lines.append(line)

@@ -155,7 +155,7 @@
 
 <script>
 // ── Tabs ──────────────────────────────────────────────────────────────────────
-function adoTab(name) {
+window.adoTab = function(name) {
   ["search","get","update"].forEach(t => {
     document.getElementById(`ado-tab-${t}`).style.display = t === name ? "" : "none";
     const btn = document.getElementById(`tab-${t}`);
@@ -165,7 +165,7 @@ function adoTab(name) {
 }
 
 // ── Recherche ─────────────────────────────────────────────────────────────────
-function adoSearch() {
+window.adoSearch = function() {
   const project  = document.getElementById("ado-search-project").value;
   const type     = document.getElementById("ado-search-type").value;
   const state    = document.getElementById("ado-search-state").value;
@@ -195,7 +195,7 @@ function adoSearch() {
 }
 
 // ── Voir item ─────────────────────────────────────────────────────────────────
-function adoGetItem() {
+window.adoGetItem  = function() {
   const id     = document.getElementById("ado-get-id").value;
   const result = document.getElementById("ado-get-result");
   if (!id) return;
@@ -211,7 +211,7 @@ function adoGetItem() {
 
 // ── Charger info item avant update ───────────────────────────────────────────
 let adoLoadTimer = null;
-function adoLoadItem() {
+window.adoLoadItem = function() {
   clearTimeout(adoLoadTimer);
   const id = document.getElementById("ado-update-id").value;
   if (!id || id.length < 3) return;
@@ -229,7 +229,7 @@ function adoLoadItem() {
 }
 
 // ── Mettre à jour ─────────────────────────────────────────────────────────────
-function adoUpdate() {
+window.adoUpdate   = function() {
   const id      = document.getElementById("ado-update-id").value;
   const state   = document.getElementById("ado-update-state").value;
   const project = document.getElementById("ado-update-project").value;
