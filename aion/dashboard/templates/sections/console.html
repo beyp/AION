@@ -110,6 +110,13 @@ function submitFromBtn(cmd) {
     .then(html => {
       const history = document.getElementById("console-history");
       if (history) {
+        // Afficher la commande envoyee
+        history.insertAdjacentHTML("beforeend",
+          `<div class="console-line">
+             <span class="console-prompt">AION&gt;</span>
+             <span class="console-cmd">${cmd}</span>
+           </div>`
+        );
         history.insertAdjacentHTML("beforeend", html);
         history.scrollTop = history.scrollHeight;
       }

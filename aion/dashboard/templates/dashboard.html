@@ -329,7 +329,7 @@ window.showIntellisense = function(input) {
 
   box.innerHTML = items.map((item, i) =>
     `<div class="intellisense-item" data-cmd="${item.cmd}"
-          onclick="applyIntellisense('${item.cmd.replace(/'/g,"\'")}')"
+          onclick="window.applyIntellisense('${item.cmd.replace(/'/g,"\'")}')"
           id="is-item-${i}">
        <span class="intellisense-cmd">${item.cmd}</span>
        <span class="intellisense-desc">${item.desc}</span>
@@ -354,9 +354,9 @@ window.consoleKeyDown = function(e) {
   if (e.key === "Enter") {
     e.preventDefault();
     if (window.intellisenseIdx >= 0 && items[window.intellisenseIdx]) {
-      applyIntellisense(items[window.intellisenseIdx].dataset.cmd);
+      window.applyIntellisense(items[window.intellisenseIdx].dataset.cmd);
     } else {
-      submitConsole(input);
+      window.submitConsole(input);
     }
     return;
   }
@@ -410,7 +410,7 @@ window.consoleKeyDown = function(e) {
   }
 
   // Rafraichir l intellisense apres chaque frappe
-  setTimeout(() => showIntellisense(input.value), 50);
+  setTimeout(() => window.showIntellisense(input.value), 50);
 }
 
 window.submitConsole = function(input) {
