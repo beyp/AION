@@ -418,48 +418,55 @@ async def fs_search(request: Request):
     editable_exts   = {"py","js","ts","html","css","json","yaml","yml",
                        "md","txt","ini","cfg","toml","csv","xml","sql"}
 
+    text_exts = {"py","js","ts","html","css","json","yaml","yml",
+                  "md","txt","ini","cfg","toml","csv","xml","sql",
+                  "ps1","bat","sh","log","gitignore","env"}
+
     for line in lines:
         if line.startswith("  OPEN:"):
-            rest   = line.replace("  OPEN:", "", 1)
-            parts  = rest.split("|")
-            fullpath = parts[0]
-            relpath  = parts[1] if len(parts) > 1 else parts[0]
+            rest     = line.replace("  OPEN:", "", 1)
+            parts    = rest.split("|")
+            fullpath = parts[0].strip()
+            relpath  = parts[1].strip() if len(parts) > 1 else parts[0]
             idx_num  = parts[2].strip() if len(parts) > 2 else ""
 
             ext      = fullpath.rsplit(".", 1)[-1].lower() if "." in fullpath else ""
             icon     = ext_icons.get(ext, "\U0001f4c4")
 
-            # Encoder le chemin proprement pour JS (JSON encode)
-            import json as _json
-            js_path     = _json.dumps(fullpath)   # ex: "C:\\code\\..."
-            safe_relpath = h.escape(relpath)
-            idx_label    = f"[{idx_num}] " if idx_num else ""
+            # Encoder le chemin comme attribut HTML data-path
+            # → pas de problème de guillemets dans onclick !
+            safe_fullpath = h.escape(fullpath)
+            safe_relpath  = h.escape(relpath)
+            idx_label     = f"[{idx_num}] " if idx_num else ""
+            is_text       = ext in text_exts
 
-            btns = ""
-            # Bouton Ouvrir — seulement pour extensions sures
-            if ext in safe_open_exts:
-                btns += (
-                    f'<button class="fs-open-btn" '
-                    f'onclick='
-                    f'"window.openFile({js_path}, this)">'
-                    f'&#x2197; Ouvrir</button>'
-                )
-            # Bouton VS Code — pour tous les fichiers texte/code
-            if ext in editable_exts or ext not in safe_open_exts:
-                btns += (
+            # Bouton Ouvrir — pour TOUS les fichiers (os.startfile)
+            btn_open = (
+                f'<button class="fs-open-btn" '
+                f'data-path="{safe_fullpath}" '
+                f'onclick="fsOpenFile(this)">'
+                f'&#x2197; Ouvrir</button>'
+            )
+
+            # Bouton Edit — seulement pour fichiers texte/code
+            # Ouvre dans le navigateur via /fs/view
+            btn_edit = ""
+            if is_text:
+                btn_edit = (
                     f'<button class="fs-open-btn" '
                     f'style="background:color-mix(in srgb,#007ACC 20%,transparent);'
                     f'border-color:#007ACC55;color:#007ACC;" '
-                    f'onclick="window.editFile({js_path}, this)">'
-                    f'&#x1F4DD; VS Code</button>'
+                    f'data-path="{safe_fullpath}" '
+                    f'onclick="fsEditFile(this)">'
+                    f'&#x1F4DD; Edit</button>'
                 )
 
             html_parts.append(
                 f'<div class="fs-result-item">'
                 f'<span class="fs-icon">{icon}</span>'
-                f'<span class="fs-name" title="{h.escape(fullpath)}">'
+                f'<span class="fs-name" title="{safe_fullpath}">'
                 f'{idx_label}{safe_relpath}</span>'
-                f'{btns}'
+                f'{btn_open}{btn_edit}'
                 f'</div>'
             )
         elif "aucun fichier" in line.lower():
@@ -467,7 +474,8 @@ async def fs_search(request: Request):
                 f'<div style="color:var(--text-dim);padding:16px;text-align:center;">'
                 f'&#x1F636; {h.escape(line)}</div>'
             )
-        elif line.strip() and not line.strip().startswith("fs open") and not line.strip().startswith("fs edit"):
+        elif line.strip() and not line.strip().startswith("fs open") \
+                and not line.strip().startswith("fs edit"):
             html_parts.append(
                 f'<div class="stat-row">'
                 f'<span style="color:var(--text-dim);font-size:0.82rem;">'
@@ -494,6 +502,38 @@ async def fs_open(request: Request):
 
 
 # ── QuickMind ─────────────────────────────────────────────────────────────────
+
+@app.get("/fs/view", response_class=HTMLResponse)
+async def fs_view(request: Request, path: str = ""):
+    """Affiche le contenu d un fichier texte dans le navigateur."""
+    import html as h
+    from pathlib import Path
+    try:
+        p = Path(path)
+        if not p.exists():
+            return HTMLResponse(f"<p style='color:red'>Fichier introuvable : {h.escape(path)}</p>")
+        content = p.read_text(encoding="utf-8", errors="replace")
+        ext     = p.suffix.lstrip(".").lower()
+        return HTMLResponse(
+            f"""<!DOCTYPE html>
+<html><head><meta charset="UTF-8">
+<title>{h.escape(p.name)}</title>
+<style>
+body{{background:#0f1117;color:#e0e0e0;font-family:"Cascadia Code",Consolas,monospace;
+      padding:20px;margin:0;}}
+h2{{color:#1e90ff;border-bottom:1px solid #2a2d3e;padding-bottom:8px;}}
+pre{{background:#1a1d27;padding:16px;border-radius:8px;overflow:auto;
+     font-size:0.85rem;line-height:1.5;white-space:pre-wrap;word-break:break-all;}}
+</style></head>
+<body>
+<h2>&#x1F4DD; {h.escape(p.name)}</h2>
+<p style="color:#888;font-size:0.8rem;">{h.escape(str(p))}</p>
+<pre>{h.escape(content)}</pre>
+</body></html>"""
+        )
+    except Exception as exc:
+        return HTMLResponse(f"<p style='color:red'>Erreur : {h.escape(str(exc))}</p>")
+
 
 @app.post("/fs/edit")
 async def fs_edit(request: Request):

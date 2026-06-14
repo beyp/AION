@@ -10,7 +10,7 @@
         placeholder="mots-cles (ex: rapport 2026)"
         autofocus
         style="flex:2;min-width:200px;"
-        onkeydown="if(event.key==='Enter') fsDoSearch()"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
       <input
         class="qm-input"
@@ -18,7 +18,7 @@
         type="text"
         placeholder="Repertoire (optionnel si memorise)"
         style="flex:2;min-width:200px;"
-        onkeydown="if(event.key==='Enter') fsDoSearch()"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
       <input
         class="qm-input"
@@ -27,11 +27,12 @@
         value="search_dir"
         placeholder="Cle memoire"
         style="flex:1;min-width:120px;"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
       <button
         class="qm-submit"
         style="background:var(--accent);"
-        onclick="fsDoSearch()">
+        onclick="window.fsDoSearch()">
         &#x1F50D; Chercher
       </button>
     </div>
@@ -47,32 +48,36 @@
 </div>
 
 <style>
-.fs-result-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:0.83rem;transition:background 0.15s;}
+.fs-result-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;
+  background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:0.83rem;}
 .fs-result-item:hover{background:color-mix(in srgb,var(--accent) 10%,transparent);}
 .fs-icon{font-size:1rem;flex-shrink:0;}
 .fs-name{flex:1;color:var(--text);word-break:break-all;}
-.fs-open-btn{background:color-mix(in srgb,var(--accent) 15%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;white-space:nowrap;flex-shrink:0;}
+.fs-open-btn{background:color-mix(in srgb,var(--accent) 15%,transparent);
+  border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);
+  color:var(--accent);padding:3px 10px;border-radius:4px;cursor:pointer;
+  font-size:0.78rem;white-space:nowrap;flex-shrink:0;}
 .fs-open-btn:hover{background:var(--accent);color:white;}
 </style>
 
 <script>
-// fsDoSearch est defini ici ET expose sur window pour etre accessible
-// Note : ce script s execute via htmx.process() appele dans loadSection()
+// ── Recherche ─────────────────────────────────────────────────────────────────
 window.fsDoSearch = function() {
-  var keywords  = document.getElementById("fs-keywords")  ? document.getElementById("fs-keywords").value.trim()  : "";
-  var directory = document.getElementById("fs-directory") ? document.getElementById("fs-directory").value.trim() : "";
-  var memkey    = document.getElementById("fs-memkey")    ? document.getElementById("fs-memkey").value.trim()    : "search_dir";
+  var keywords   = (document.getElementById("fs-keywords")  || {}).value || "";
+  var directory  = (document.getElementById("fs-directory") || {}).value || "";
+  var memkey     = (document.getElementById("fs-memkey")    || {}).value || "search_dir";
   var resultsDiv = document.getElementById("fs-results");
 
+  keywords = keywords.trim();
   if (!keywords) {
     if (resultsDiv) resultsDiv.innerHTML = '<div style="color:var(--red);padding:8px;">Veuillez entrer des mots-cles.</div>';
     return;
   }
 
-  if (resultsDiv) resultsDiv.innerHTML = '<div style="color:var(--text-dim);padding:12px;text-align:center;">&#x1F50D; Recherche en cours...</div>';
+  if (resultsDiv) resultsDiv.innerHTML = '<div style="color:var(--text-dim);padding:12px;text-align:center;">Recherche en cours...</div>';
 
   var payload = { keywords: keywords, memory_key: memkey || "search_dir" };
-  if (directory) payload.directory = directory;
+  if (directory.trim()) payload.directory = directory.trim();
 
   fetch("/fs/search", {
     method: "POST",
@@ -90,8 +95,15 @@ window.fsDoSearch = function() {
   });
 };
 
-// openFile expose sur window pour les boutons dans les resultats
-window.openFile = function(path, btnEl) {
+// ── Ouvrir fichier (os.startfile via /fs/open) ────────────────────────────────
+window.fsOpenFile = function(btn) {
+  var path = btn.getAttribute("data-path");
+  if (!path) return;
+
+  var original = btn.textContent;
+  btn.textContent = "...";
+  btn.disabled = true;
+
   fetch("/fs/open", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -100,46 +112,36 @@ window.openFile = function(path, btnEl) {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.ok) {
-      if (btnEl) {
-        btnEl.textContent = "Ouvert !";
-        btnEl.style.background = "var(--green)";
-        btnEl.style.color = "white";
-        setTimeout(function() {
-          if (btnEl) { btnEl.textContent = "\u2197 Ouvrir"; btnEl.style.background = ""; btnEl.style.color = ""; }
-        }, 2000);
-      }
+      btn.textContent = "OK !";
+      btn.style.background = "var(--green)";
+      btn.style.color = "white";
     } else {
-      if (btnEl) { btnEl.textContent = "Erreur"; btnEl.style.background = "var(--red)"; btnEl.style.color = "white"; }
+      btn.textContent = "Erreur";
+      btn.title = data.error || "";
+      btn.style.background = "var(--red)";
+      btn.style.color = "white";
     }
+    btn.disabled = false;
+    setTimeout(function() {
+      btn.textContent = original;
+      btn.style.background = "";
+      btn.style.color = "";
+    }, 2000);
+  })
+  .catch(function(err) {
+    btn.textContent = "Erreur";
+    btn.style.background = "var(--red)";
+    btn.style.color = "white";
+    btn.disabled = false;
   });
 };
 
-window.editFile = function(path, btnEl) {
-  fetch("/fs/edit", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ path: path }),
-  })
-  .then(function(r) { return r.json(); })
-  .then(function(data) {
-    if (data.ok) {
-      if (btnEl) {
-        btnEl.textContent = "Ouvert !";
-        btnEl.style.background = "var(--green)";
-        btnEl.style.color = "white";
-        setTimeout(function() {
-          if (btnEl) { btnEl.textContent = "\uD83D\uDCDD VS Code"; btnEl.style.background = ""; btnEl.style.color = ""; }
-        }, 2000);
-      }
-    } else {
-      if (btnEl) {
-        var msg = data.error || "Erreur";
-        btnEl.title = msg;
-        btnEl.textContent = "Erreur";
-        btnEl.style.background = "var(--red)";
-        btnEl.style.color = "white";
-      }
-    }
-  });
+// ── Editer fichier texte (affichage dans onglet navigateur) ───────────────────
+window.fsEditFile = function(btn) {
+  var path = btn.getAttribute("data-path");
+  if (!path) return;
+  // Ouvrir dans un nouvel onglet via /fs/view?path=...
+  var url = "/fs/view?path=" + encodeURIComponent(path);
+  window.open(url, "_blank");
 };
 </script>
