@@ -203,7 +203,7 @@ header .spacer{flex:1;}
 
 <script>
 // ── Navigation ────────────────────────────────────────────────────────────────
-function loadSection(el) {
+window.loadSection = function(el) {
   document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
   el.classList.add("active");
   const section = el.dataset.section;
@@ -211,8 +211,17 @@ function loadSection(el) {
   main.innerHTML = '<div style="color:var(--text-dim);padding:40px;text-align:center;">Chargement...</div>';
   fetch(`/section/${section}`)
     .then(r => r.text())
-    .then(html => { main.innerHTML = html; htmx.process(main); });
-}
+    .then(html => {
+      main.innerHTML = html;
+      // Executer les scripts du fragment via un range
+      const range = document.createRange();
+      range.selectNodeContents(main);
+      const frag = range.createContextualFragment(html);
+      main.innerHTML = "";
+      main.appendChild(frag);
+      htmx.process(main);
+    });
+};
 
 // ── Drag & Drop ───────────────────────────────────────────────────────────────
 const navList    = document.getElementById("nav-list");

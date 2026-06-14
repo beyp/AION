@@ -14,7 +14,6 @@ AION Console v0.7.2
       </div>
     </div>
     <div class="console-input-row">
-      <!-- Intellisense box au-dessus de l input -->
       <div id="intellisense-box" class="intellisense-box"></div>
       <span class="console-prompt-label">AION&gt;</span>
       <input
@@ -24,103 +23,70 @@ AION Console v0.7.2
         placeholder="ado list | net status | qm add Titre | fs search mot | sys disk | help..."
         autofocus
         autocomplete="off"
-        onkeydown="consoleKeyDown(event)"
-        oninput="showIntellisense(this.value)"
-        onfocus="showIntellisense(this.value)"
-        onblur="setTimeout(()=>document.getElementById('intellisense-box').style.display='none', 200)"
+        onkeydown="window.consoleKeyDown(event)"
+        oninput="window.showIntellisense(this.value)"
+        onfocus="window.showIntellisense(this.value)"
+        onblur="setTimeout(()=>{var b=document.getElementById('intellisense-box');if(b)b.style.display='none'},200)"
       >
       <button class="console-send-btn"
-        onclick="submitConsole(document.getElementById('console-input'))">
+        onclick="window.submitConsole(document.getElementById('console-input'))">
         &#x21B5;
       </button>
     </div>
   </div>
 </div>
 
-<!-- Raccourcis rapides -->
+<!-- Raccourcis rapides — inline onclick pour eviter le probleme de script dans innerHTML -->
 <div class="card" style="margin-top:16px;">
   <div class="card-title">&#x26A1; Raccourcis rapides</div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">ADO</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="submitFromBtn('ado list')">ado list</button>
-      <button class="run-btn" onclick="submitFromBtn('ado my')">ado my</button>
-      <button class="run-btn" onclick="submitFromBtn('ado list --state In Progress')">In Progress</button>
-      <button class="run-btn" onclick="submitFromBtn('ado list --type Bug --state Active')">Bugs actifs</button>
-      <button class="run-btn" onclick="submitFromBtn('ado ?')">ado ?</button>
+      <button class="run-btn" onclick="window.submitConsole('ado list')">ado list</button>
+      <button class="run-btn" onclick="window.submitConsole('ado my')">ado my</button>
+      <button class="run-btn" onclick="window.submitConsole('ado list --state In Progress')">In Progress</button>
+      <button class="run-btn" onclick="window.submitConsole('ado list --type Bug --state Active')">Bugs actifs</button>
+      <button class="run-btn" onclick="window.submitConsole('ado ?')">ado ?</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">NET</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="submitFromBtn('net status')">net status</button>
-      <button class="run-btn" onclick="submitFromBtn('net myip')">net myip</button>
-      <button class="run-btn" onclick="submitFromBtn('net ping')">net ping</button>
+      <button class="run-btn" onclick="window.submitConsole('net status')">net status</button>
+      <button class="run-btn" onclick="window.submitConsole('net myip')">net myip</button>
+      <button class="run-btn" onclick="window.submitConsole('net ping')">net ping</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">SYS</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="submitFromBtn('sys cpu')">sys cpu</button>
-      <button class="run-btn" onclick="submitFromBtn('sys disk')">sys disk</button>
-      <button class="run-btn" onclick="submitFromBtn('sys uptime')">sys uptime</button>
+      <button class="run-btn" onclick="window.submitConsole('sys cpu')">sys cpu</button>
+      <button class="run-btn" onclick="window.submitConsole('sys disk')">sys disk</button>
+      <button class="run-btn" onclick="window.submitConsole('sys uptime')">sys uptime</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">QM</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="submitFromBtn('qm list')">qm list</button>
-      <button class="run-btn" onclick="submitFromBtn('qm health')">qm health</button>
-      <button class="run-btn" onclick="submitFromBtn('qm ?')">qm ?</button>
+      <button class="run-btn" onclick="window.submitConsole('qm list')">qm list</button>
+      <button class="run-btn" onclick="window.submitConsole('qm health')">qm health</button>
+      <button class="run-btn" onclick="window.submitConsole('qm ?')">qm ?</button>
     </div>
   </div>
 
   <div>
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">CORE</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="submitFromBtn('status')">status</button>
-      <button class="run-btn" onclick="submitFromBtn('services')">services</button>
-      <button class="run-btn" onclick="submitFromBtn('shortcuts')">shortcuts</button>
-      <button class="run-btn" onclick="submitFromBtn('domains')">domains</button>
-      <button class="run-btn" onclick="submitFromBtn('scheduler')">scheduler</button>
-      <button class="run-btn" onclick="submitFromBtn('memory')">memory</button>
+      <button class="run-btn" onclick="window.submitConsole('status')">status</button>
+      <button class="run-btn" onclick="window.submitConsole('services')">services</button>
+      <button class="run-btn" onclick="window.submitConsole('shortcuts')">shortcuts</button>
+      <button class="run-btn" onclick="window.submitConsole('domains')">domains</button>
+      <button class="run-btn" onclick="window.submitConsole('scheduler')">scheduler</button>
+      <button class="run-btn" onclick="window.submitConsole('memory')">memory</button>
     </div>
   </div>
 </div>
-
-<script>
-// submitFromBtn : fonctionne meme si window.quickCmd pas encore defini
-// car on fait tout en local ici
-function submitFromBtn(cmd) {
-  // 1. Mettre la commande dans l input si present
-  const input = document.getElementById("console-input");
-
-  // 2. Envoyer directement via fetch (pas besoin de submitConsole)
-  const formData = new FormData();
-  formData.append("command", cmd);
-
-  if (input) input.value = "";
-
-  fetch("/console/run", { method: "POST", body: formData })
-    .then(r => r.text())
-    .then(html => {
-      const history = document.getElementById("console-history");
-      if (history) {
-        // Afficher la commande envoyee
-        history.insertAdjacentHTML("beforeend",
-          `<div class="console-line">
-             <span class="console-prompt">AION&gt;</span>
-             <span class="console-cmd">${cmd}</span>
-           </div>`
-        );
-        history.insertAdjacentHTML("beforeend", html);
-        history.scrollTop = history.scrollHeight;
-      }
-    })
-    .catch(err => console.error("AION console error:", err));
-}
-</script>
