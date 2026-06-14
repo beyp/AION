@@ -152,15 +152,22 @@ class AdoSearchItemsService(BaseService):
                     assigned_to.get("displayName", "")[:15]
                     if isinstance(assigned_to, dict) else ""
                 )
-                type_label = TYPE_ICONS.get(wi_t, f"[{wi_t[:6]}]")
 
-                line = (
-                    f"  ITEM:{wi_id}|{wi_t}|{wi_state}|"
-                    f"  {type_label:<10} #{wi_id:<8} [{wi_state:<14}] {title}"
-                )
+                type_icons = {
+                    "Bug":        "🔴 Bug    ",
+                    "Task":       "🟢 Task   ",
+                    "User Story": "🔵 Story  ",
+                    "Feature":    "🟣 Feature",
+                    "Epic":       "🟠 Epic   ",
+                    "Issue":      "⚪ Issue  ",
+                }
+                type_label = type_icons.get(wi_t, f"   {wi_t[:8]}")
+
+                line = f"  {type_label}  #{wi_id:<8} [{wi_state:<16}] {title}"
                 if assignee:
                     line += f"  -> {assignee}"
                 lines.append(line)
+
 
             return "\n".join(lines)
 
