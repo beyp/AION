@@ -1,58 +1,60 @@
 <div class="card" style="padding:0; overflow:hidden;">
   <div class="card-title" style="padding:16px 20px 12px; border-bottom:1px solid var(--border);">
-    💬 Console AION
+    &#x1F4AC; Console AION
     <button class="refresh-btn" onclick="document.getElementById('console-history').innerHTML=''">
-      🗑 Clear
+      &#x1F5D1; Clear
     </button>
   </div>
   <div class="console-wrap">
     <div class="console-history" id="console-history">
       <div class="console-output" style="color:var(--text-dim);">
-AION Console v0.7.2 — Syntaxe naturelle par domaine
-  Raccourcis : fleches haut/bas = historique | Tab = autocompletion
-  Aide       : ado ? | net ? | sys ? | fs ? | qm ?
+AION Console v0.7.2
+  Tab / fleches = intellisense | haut/bas = historique | Echap = fermer suggestions
+  Ex: ado get item 191614 | ado list --state "In Progress" | qm add "Titre" --priority urgent
       </div>
     </div>
     <div class="console-input-row">
+      <!-- Intellisense box au-dessus de l input -->
+      <div id="intellisense-box" class="intellisense-box"></div>
       <span class="console-prompt-label">AION&gt;</span>
       <input
         class="console-input"
         id="console-input"
         type="text"
-        placeholder="ado get item 191614 | net status | qm add Titre | fs search mot | sys disk | help"
+        placeholder="ado list | net status | qm add Titre | fs search mot | sys disk | help..."
         autofocus
         autocomplete="off"
-        data-services="{{ services | tojson }}"
         onkeydown="consoleKeyDown(event)"
+        oninput="showIntellisense(this.value)"
+        onfocus="showIntellisense(this.value)"
+        onblur="setTimeout(()=>document.getElementById('intellisense-box').style.display='none', 200)"
       >
       <button class="console-send-btn"
         onclick="submitConsole(document.getElementById('console-input'))">
-        ↵
+        &#x21B5;
       </button>
     </div>
   </div>
 </div>
 
-<!-- Raccourcis rapides par domaine -->
+<!-- Raccourcis rapides -->
 <div class="card" style="margin-top:16px;">
-  <div class="card-title">⚡ Raccourcis rapides</div>
+  <div class="card-title">&#x26A1; Raccourcis rapides</div>
 
   <div style="margin-bottom:10px;">
-    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
-      ADO
-    </span>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+    <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">ADO</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
       <button class="run-btn" onclick="quickCmd('ado list')">ado list</button>
       <button class="run-btn" onclick="quickCmd('ado my')">ado my</button>
+      <button class="run-btn" onclick="quickCmd('ado list --state In Progress')">In Progress</button>
+      <button class="run-btn" onclick="quickCmd('ado list --type Bug --state Active')">Bugs actifs</button>
       <button class="run-btn" onclick="quickCmd('ado ?')">ado ?</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
-    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
-      NET
-    </span>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+    <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">NET</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
       <button class="run-btn" onclick="quickCmd('net status')">net status</button>
       <button class="run-btn" onclick="quickCmd('net myip')">net myip</button>
       <button class="run-btn" onclick="quickCmd('net ping')">net ping</button>
@@ -60,10 +62,8 @@ AION Console v0.7.2 — Syntaxe naturelle par domaine
   </div>
 
   <div style="margin-bottom:10px;">
-    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
-      SYS
-    </span>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+    <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">SYS</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
       <button class="run-btn" onclick="quickCmd('sys cpu')">sys cpu</button>
       <button class="run-btn" onclick="quickCmd('sys disk')">sys disk</button>
       <button class="run-btn" onclick="quickCmd('sys uptime')">sys uptime</button>
@@ -71,10 +71,8 @@ AION Console v0.7.2 — Syntaxe naturelle par domaine
   </div>
 
   <div style="margin-bottom:10px;">
-    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
-      QM
-    </span>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+    <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">QM</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
       <button class="run-btn" onclick="quickCmd('qm list')">qm list</button>
       <button class="run-btn" onclick="quickCmd('qm health')">qm health</button>
       <button class="run-btn" onclick="quickCmd('qm ?')">qm ?</button>
@@ -82,14 +80,13 @@ AION Console v0.7.2 — Syntaxe naturelle par domaine
   </div>
 
   <div>
-    <span style="color:var(--text-dim); font-size:0.75rem; text-transform:uppercase; letter-spacing:1px;">
-      CORE
-    </span>
-    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-top:4px;">
+    <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">CORE</span>
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
       <button class="run-btn" onclick="quickCmd('status')">status</button>
       <button class="run-btn" onclick="quickCmd('services')">services</button>
-      <button class="run-btn" onclick="quickCmd('scheduler')">scheduler</button>
       <button class="run-btn" onclick="quickCmd('shortcuts')">shortcuts</button>
+      <button class="run-btn" onclick="quickCmd('domains')">domains</button>
+      <button class="run-btn" onclick="quickCmd('scheduler')">scheduler</button>
       <button class="run-btn" onclick="quickCmd('memory')">memory</button>
     </div>
   </div>
@@ -97,8 +94,10 @@ AION Console v0.7.2 — Syntaxe naturelle par domaine
 
 <script>
 function quickCmd(cmd) {
-  const input = document.getElementById('console-input');
-  input.value = cmd;
-  submitConsole(input);
+  const input = document.getElementById("console-input");
+  if (input) {
+    input.value = cmd;
+    submitConsole(input);
+  }
 }
 </script>

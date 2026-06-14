@@ -8,490 +8,197 @@
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
 <style>
 :root[data-theme="dark"] {
-  --bg:        #0f1117;
-  --sidebar:   #13161f;
-  --card:      #1a1d27;
-  --border:    #2a2d3e;
-  --text:      #e0e0e0;
-  --text-dim:  #888;
-  --accent:    #1e90ff;
-  --accent2:   #7B2FBE;
-  --green:     #4caf50;
-  --orange:    #ff9800;
-  --red:       #f44336;
-  --header:    #151821;
+  --bg:#0f1117;--sidebar:#13161f;--card:#1a1d27;--border:#2a2d3e;
+  --text:#e0e0e0;--text-dim:#888;--accent:#1e90ff;--accent2:#7B2FBE;
+  --green:#4caf50;--orange:#ff9800;--red:#f44336;--header:#151821;
 }
 :root[data-theme="light"] {
-  --bg:        #f0f2f5;
-  --sidebar:   #ffffff;
-  --card:      #ffffff;
-  --border:    #dde1f0;
-  --text:      #1a1a2e;
-  --text-dim:  #666;
-  --accent:    #1e90ff;
-  --accent2:   #7B2FBE;
-  --green:     #2e7d32;
-  --orange:    #e65100;
-  --red:       #c62828;
-  --header:    #ffffff;
+  --bg:#f0f2f5;--sidebar:#ffffff;--card:#ffffff;--border:#dde1f0;
+  --text:#1a1a2e;--text-dim:#666;--accent:#1e90ff;--accent2:#7B2FBE;
+  --green:#2e7d32;--orange:#e65100;--red:#c62828;--header:#ffffff;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: "Segoe UI", sans-serif; background: var(--bg); color: var(--text); display: flex; flex-direction: column; height: 100vh; overflow: hidden; }
-
-/* ── Header ── */
-header {
-  background: var(--header);
-  border-bottom: 2px solid var(--accent);
-  padding: 0 20px;
-  height: 52px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  flex-shrink: 0;
-  z-index: 100;
-}
-header h1 { font-size: 1.2rem; color: var(--accent); font-weight: 700; }
-header .version { color: var(--text-dim); font-size: 0.8rem; }
-header .spacer { flex: 1; }
-.header-btn {
-  background: var(--card);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 5px 12px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.82rem;
-  transition: background 0.2s;
-}
-.header-btn:hover { background: var(--accent); color: white; }
-.notif-dot { width: 8px; height: 8px; background: var(--green); border-radius: 50%; display: inline-block; margin-right: 4px; }
-
-/* ── Layout ── */
-.layout { display: flex; flex: 1; overflow: hidden; }
-
-/* ── Sidebar ── */
-.sidebar {
-  width: 220px;
-  background: var(--sidebar);
-  border-right: 1px solid var(--border);
-  display: flex;
-  flex-direction: column;
-  flex-shrink: 0;
-  overflow-y: auto;
-  padding: 12px 0;
-}
-.sidebar-title {
-  font-size: 0.7rem;
-  color: var(--text-dim);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  padding: 8px 16px 4px;
-}
-.nav-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 10px 16px;
-  cursor: pointer;
-  border-radius: 0;
-  transition: background 0.15s;
-  user-select: none;
-  border-left: 3px solid transparent;
-  font-size: 0.9rem;
-}
-.nav-item:hover { background: var(--border); }
-.nav-item.active {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border-left-color: var(--accent);
-  color: var(--accent);
-  font-weight: 600;
-}
-.nav-icon { font-size: 1.1rem; width: 22px; text-align: center; }
-.drag-handle {
-  margin-left: auto;
-  color: var(--text-dim);
-  cursor: grab;
-  font-size: 0.8rem;
-  opacity: 0.4;
-}
-.drag-handle:hover { opacity: 1; }
-.nav-item.sortable-ghost { opacity: 0.3; }
-.nav-item.sortable-drag { background: var(--accent); color: white; border-radius: 6px; }
-
-/* ── Main content ── */
-.main {
-  flex: 1;
-  overflow-y: auto;
-  padding: 24px;
-  background: var(--bg);
-}
-
-/* ── Cards ── */
-.card {
-  background: var(--card);
-  border: 1px solid var(--border);
-  border-radius: 10px;
-  padding: 20px;
-  margin-bottom: 20px;
-}
-.card-title {
-  font-size: 1rem;
-  color: var(--accent);
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  margin-bottom: 16px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.card-title .refresh-btn {
-  margin-left: auto;
-  background: var(--border);
-  border: none;
-  color: var(--text-dim);
-  padding: 3px 10px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-.card-title .refresh-btn:hover { background: var(--accent); color: white; }
-
-/* ── Stat rows ── */
-.stat-row {
-  display: flex;
-  justify-content: space-between;
-  padding: 7px 0;
-  border-bottom: 1px solid var(--border);
-  font-size: 0.88rem;
-}
-.stat-row:last-child { border-bottom: none; }
-.stat-label { color: var(--text-dim); }
-.stat-value { font-weight: 500; }
-
-/* ── Badges ── */
-.badge {
-  display: inline-block;
-  padding: 2px 10px;
-  border-radius: 12px;
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-.badge-green  { background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); }
-.badge-red    { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
-.badge-blue   { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
-.badge-orange { background: color-mix(in srgb, var(--orange) 20%, transparent); color: var(--orange); }
-
-/* ── Service list ── */
-.svc-list { list-style: none; }
-.svc-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--border) 40%, transparent);
-  margin-bottom: 6px;
-  font-size: 0.85rem;
-}
-.svc-name { color: var(--accent); font-weight: 600; min-width: 140px; }
-.svc-desc { color: var(--text-dim); font-size: 0.8rem; flex: 1; }
-.domain-badge {
-  font-size: 0.7rem;
-  background: var(--accent2);
-  color: white;
-  padding: 1px 7px;
-  border-radius: 10px;
-}
-.run-btn {
-  background: color-mix(in srgb, var(--accent) 15%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent);
-  color: var(--accent);
-  padding: 3px 12px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.78rem;
-  white-space: nowrap;
-  transition: background 0.15s;
-}
-.run-btn:hover { background: var(--accent); color: white; }
-.cmd-result {
-  font-size: 0.82rem;
-  color: var(--green);
-  background: color-mix(in srgb, var(--green) 8%, transparent);
-  border: 1px solid color-mix(in srgb, var(--green) 25%, transparent);
-  border-radius: 4px;
-  padding: 8px 12px;
-  margin-top: 4px;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-.alert-success { color: var(--green); padding: 6px; font-size: 0.85rem; }
-.alert-error   { color: var(--red);   padding: 6px; font-size: 0.85rem; }
-
-/* ── Console ── */
-.console-wrap {
-  background: #0a0c14;
-  border-radius: 8px;
-  padding: 16px;
-  font-family: "Cascadia Code", "Consolas", monospace;
-  font-size: 0.85rem;
-  min-height: 300px;
-  max-height: 500px;
-  overflow-y: auto;
-  display: flex;
-  flex-direction: column;
-}
-.console-history { flex: 1; margin-bottom: 12px; }
-.console-line { color: #888; margin-top: 10px; }
-.console-prompt { color: var(--accent); font-weight: bold; margin-right: 6px; }
-.console-cmd { color: #fff; }
-.console-output {
-  color: var(--green);
-  white-space: pre-wrap;
-  padding-left: 20px;
-  margin-top: 2px;
-  font-size: 0.82rem;
-}
-.console-input-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  border-top: 1px solid #222;
-  padding-top: 12px;
-}
-.console-prompt-label { color: var(--accent); font-weight: bold; white-space: nowrap; }
-.console-input {
-  flex: 1;
-  background: transparent;
-  border: none;
-  color: #fff;
-  font-family: inherit;
-  font-size: 0.85rem;
-  outline: none;
-}
-.console-send-btn {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 4px 14px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.8rem;
-}
-.console-send-btn:hover { opacity: 0.85; }
-
-/* ── QuickMind ── */
-.task-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--border) 40%, transparent);
-  margin-bottom: 5px;
-  font-size: 0.85rem;
-}
-.task-title { flex: 1; }
-.task-prio-urgent { color: var(--red); }
-.task-prio-high   { color: var(--orange); }
-.task-prio-normal { color: var(--accent); }
-.task-prio-low    { color: var(--text-dim); }
-.qm-form { display: flex; gap: 8px; margin-bottom: 16px; flex-wrap: wrap; }
-.qm-input {
-  flex: 1;
-  min-width: 180px;
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 7px 12px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-.qm-select {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 7px 10px;
-  border-radius: 6px;
-  font-size: 0.85rem;
-}
-.qm-submit {
-  background: var(--green);
-  color: white;
-  border: none;
-  padding: 7px 16px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-.qm-submit:hover { opacity: 0.85; }
-.offline-msg { color: var(--red); font-size: 0.85rem; padding: 16px; text-align: center; }
-
-/* ── Scheduler form ── */
-.sched-form { display: flex; gap: 8px; margin-top: 16px; flex-wrap: wrap; }
-.sched-input {
-  background: var(--bg);
-  border: 1px solid var(--border);
-  color: var(--text);
-  padding: 6px 10px;
-  border-radius: 6px;
-  font-size: 0.82rem;
-}
-.sched-submit {
-  background: var(--accent);
-  color: white;
-  border: none;
-  padding: 6px 14px;
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 0.82rem;
-}
-
-/* ── Job list ── */
-.job-item {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--border) 40%, transparent);
-  margin-bottom: 6px;
-  font-size: 0.85rem;
-}
-.job-id { color: var(--orange); font-weight: 600; flex: 1; }
-.job-btn {
-  background: transparent;
-  border: 1px solid var(--border);
-  color: var(--text-dim);
-  padding: 2px 8px;
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 0.75rem;
-}
-.job-btn:hover { background: var(--border); color: var(--text); }
-
-/* ── Memory ── */
-.mem-item {
-  display: flex;
-  gap: 10px;
-  padding: 6px 10px;
-  border-radius: 6px;
-  background: color-mix(in srgb, var(--border) 40%, transparent);
-  margin-bottom: 4px;
-  font-size: 0.83rem;
-  align-items: center;
-}
-.mem-key { color: var(--accent); font-weight: 600; min-width: 120px; }
-.mem-val { color: var(--text); flex: 1; }
-.mem-type { font-size: 0.7rem; background: var(--border); padding: 1px 6px; border-radius: 8px; color: var(--text-dim); }
-
-/* ── Grid stats ── */
-.stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 12px; margin-bottom: 16px; }
-.stat-box {
-  background: color-mix(in srgb, var(--accent) 10%, transparent);
-  border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent);
-  border-radius: 8px;
-  padding: 14px;
-  text-align: center;
-}
-.stat-box .num { font-size: 1.8rem; font-weight: 700; color: var(--accent); }
-.stat-box .lbl { font-size: 0.75rem; color: var(--text-dim); margin-top: 2px; }
-
-/* ── Domain group ── */
-.domain-group { margin-bottom: 16px; }
-.domain-label {
-  font-size: 0.72rem;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--text-dim);
-  margin-bottom: 6px;
-  padding-left: 4px;
-}
-
-/* ── Scrollbar ── */
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
-
-/* ── HTMX loading ── */
-.htmx-indicator { display: none; }
-.htmx-request .htmx-indicator { display: inline; }
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:"Segoe UI",sans-serif;background:var(--bg);color:var(--text);display:flex;flex-direction:column;height:100vh;overflow:hidden;}
+header{background:var(--header);border-bottom:2px solid var(--accent);padding:0 20px;height:52px;display:flex;align-items:center;gap:12px;flex-shrink:0;z-index:100;}
+header h1{font-size:1.2rem;color:var(--accent);font-weight:700;}
+header .version{color:var(--text-dim);font-size:0.8rem;}
+header .spacer{flex:1;}
+.header-btn{background:var(--card);border:1px solid var(--border);color:var(--text);padding:5px 12px;border-radius:6px;cursor:pointer;font-size:0.82rem;transition:background 0.2s;}
+.header-btn:hover{background:var(--accent);color:white;}
+.layout{display:flex;flex:1;overflow:hidden;}
+.sidebar{width:220px;background:var(--sidebar);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;overflow-y:auto;padding:12px 0;}
+.sidebar-title{font-size:0.7rem;color:var(--text-dim);text-transform:uppercase;letter-spacing:1px;padding:8px 16px 4px;}
+.nav-item{display:flex;align-items:center;gap:10px;padding:10px 16px;cursor:pointer;transition:background 0.15s;user-select:none;border-left:3px solid transparent;font-size:0.9rem;}
+.nav-item:hover{background:var(--border);}
+.nav-item.active{background:color-mix(in srgb,var(--accent) 15%,transparent);border-left-color:var(--accent);color:var(--accent);font-weight:600;}
+.nav-icon{font-size:1.1rem;width:22px;text-align:center;}
+.drag-handle{margin-left:auto;color:var(--text-dim);cursor:grab;font-size:0.8rem;opacity:0.4;}
+.drag-handle:hover{opacity:1;}
+.nav-item.sortable-ghost{opacity:0.3;}
+.main{flex:1;overflow-y:auto;padding:24px;background:var(--bg);}
+.card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-bottom:20px;}
+.card-title{font-size:1rem;color:var(--accent);text-transform:uppercase;letter-spacing:1px;margin-bottom:16px;display:flex;align-items:center;gap:8px;}
+.card-title .refresh-btn{margin-left:auto;background:var(--border);border:none;color:var(--text-dim);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.75rem;}
+.card-title .refresh-btn:hover{background:var(--accent);color:white;}
+.stat-row{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--border);font-size:0.88rem;}
+.stat-row:last-child{border-bottom:none;}
+.stat-label{color:var(--text-dim);}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;font-size:0.75rem;font-weight:600;}
+.badge-green{background:color-mix(in srgb,var(--green) 20%,transparent);color:var(--green);}
+.badge-red{background:color-mix(in srgb,var(--red) 20%,transparent);color:var(--red);}
+.badge-blue{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);}
+.badge-orange{background:color-mix(in srgb,var(--orange) 20%,transparent);color:var(--orange);}
+.svc-list{list-style:none;}
+.svc-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:6px;font-size:0.85rem;}
+.svc-name{color:var(--accent);font-weight:600;min-width:140px;}
+.svc-desc{color:var(--text-dim);font-size:0.8rem;flex:1;}
+.run-btn{background:color-mix(in srgb,var(--accent) 15%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);padding:3px 12px;border-radius:4px;cursor:pointer;font-size:0.78rem;white-space:nowrap;transition:background 0.15s;}
+.run-btn:hover{background:var(--accent);color:white;}
+.cmd-result{font-size:0.82rem;color:var(--green);background:color-mix(in srgb,var(--green) 8%,transparent);border:1px solid color-mix(in srgb,var(--green) 25%,transparent);border-radius:4px;padding:8px 12px;margin-top:4px;white-space:pre-wrap;word-break:break-all;}
+.alert-success{color:var(--green);padding:6px;font-size:0.85rem;}
+.alert-error{color:var(--red);padding:6px;font-size:0.85rem;}
+.console-wrap{background:#0a0c14;border-radius:8px;padding:16px;font-family:"Cascadia Code","Consolas",monospace;font-size:0.85rem;min-height:300px;max-height:500px;overflow-y:auto;display:flex;flex-direction:column;}
+.console-history{flex:1;margin-bottom:12px;}
+.console-line{color:#888;margin-top:10px;}
+.console-prompt{color:var(--accent);font-weight:bold;margin-right:6px;}
+.console-cmd{color:#fff;}
+.console-output{color:var(--green);white-space:pre-wrap;padding-left:20px;margin-top:2px;font-size:0.82rem;}
+.console-input-row{display:flex;align-items:center;gap:8px;border-top:1px solid #222;padding-top:12px;position:relative;}
+.console-prompt-label{color:var(--accent);font-weight:bold;white-space:nowrap;}
+.console-input{flex:1;background:transparent;border:none;color:#fff;font-family:inherit;font-size:0.85rem;outline:none;}
+.console-send-btn{background:var(--accent);color:white;border:none;padding:4px 14px;border-radius:4px;cursor:pointer;font-size:0.8rem;}
+.console-send-btn:hover{opacity:0.85;}
+/* Intellisense */
+.intellisense-box{position:absolute;bottom:100%;left:0;right:0;background:#1a1d27;border:1px solid var(--accent);border-radius:6px;max-height:200px;overflow-y:auto;z-index:1000;margin-bottom:4px;display:none;}
+.intellisense-item{padding:6px 12px;font-size:0.82rem;cursor:pointer;display:flex;gap:12px;align-items:center;}
+.intellisense-item:hover,.intellisense-item.selected{background:color-mix(in srgb,var(--accent) 20%,transparent);}
+.intellisense-cmd{color:var(--accent);font-weight:600;min-width:200px;}
+.intellisense-desc{color:var(--text-dim);font-size:0.78rem;}
+.task-item{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:5px;font-size:0.85rem;}
+.task-title{flex:1;}
+.qm-form{display:flex;gap:8px;margin-bottom:16px;flex-wrap:wrap;}
+.qm-input{flex:1;min-width:180px;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 12px;border-radius:6px;font-size:0.85rem;}
+.qm-select{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem;}
+.qm-submit{background:var(--green);color:white;border:none;padding:7px 16px;border-radius:6px;cursor:pointer;font-size:0.85rem;}
+.qm-submit:hover{opacity:0.85;}
+.offline-msg{color:var(--red);font-size:0.85rem;padding:16px;text-align:center;}
+.sched-form{display:flex;gap:8px;margin-top:16px;flex-wrap:wrap;}
+.sched-input{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:6px 10px;border-radius:6px;font-size:0.82rem;}
+.sched-submit{background:var(--accent);color:white;border:none;padding:6px 14px;border-radius:6px;cursor:pointer;font-size:0.82rem;}
+.job-item{display:flex;align-items:center;gap:10px;padding:8px 12px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:6px;font-size:0.85rem;}
+.job-id{color:var(--orange);font-weight:600;flex:1;}
+.job-btn{background:transparent;border:1px solid var(--border);color:var(--text-dim);padding:2px 8px;border-radius:4px;cursor:pointer;font-size:0.75rem;}
+.job-btn:hover{background:var(--border);color:var(--text);}
+.mem-item{display:flex;gap:10px;padding:6px 10px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:0.83rem;align-items:center;}
+.mem-key{color:var(--accent);font-weight:600;min-width:120px;}
+.mem-val{color:var(--text);flex:1;}
+.mem-type{font-size:0.7rem;background:var(--border);padding:1px 6px;border-radius:8px;color:var(--text-dim);}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:12px;margin-bottom:16px;}
+.stat-box{background:color-mix(in srgb,var(--accent) 10%,transparent);border:1px solid color-mix(in srgb,var(--accent) 30%,transparent);border-radius:8px;padding:14px;text-align:center;}
+.stat-box .num{font-size:1.8rem;font-weight:700;color:var(--accent);}
+.stat-box .lbl{font-size:0.75rem;color:var(--text-dim);margin-top:2px;}
+.domain-group{margin-bottom:16px;}
+.domain-label{font-size:0.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--text-dim);margin-bottom:6px;padding-left:4px;}
+/* ADO */
+.ado-form{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;}
+.ado-input,.ado-select{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:7px 10px;border-radius:6px;font-size:0.85rem;}
+.ado-btn{padding:7px 16px;border:none;border-radius:6px;cursor:pointer;font-size:0.85rem;font-weight:600;}
+.ado-btn-primary{background:var(--accent);color:white;}
+.ado-btn-success{background:var(--green);color:white;}
+.ado-btn:hover{opacity:0.85;}
+.ado-result{font-size:0.82rem;background:color-mix(in srgb,var(--border) 50%,transparent);border-radius:6px;padding:12px;white-space:pre-wrap;margin-top:8px;}
+.ado-item-row{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:0.83rem;}
+.ado-id{color:var(--accent);font-weight:700;min-width:60px;}
+.ado-state{font-size:0.75rem;padding:1px 7px;border-radius:8px;}
+.ado-title{flex:1;}
+.state-active{background:color-mix(in srgb,var(--orange) 20%,transparent);color:var(--orange);}
+.state-done{background:color-mix(in srgb,var(--green) 20%,transparent);color:var(--green);}
+.state-new{background:color-mix(in srgb,var(--accent) 20%,transparent);color:var(--accent);}
+.state-removed{background:color-mix(in srgb,var(--red) 20%,transparent);color:var(--red);}
+.state-inprogress{background:color-mix(in srgb,#9c27b0 20%,transparent);color:#9c27b0;}
+/* FS */
+.fs-result-item{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:6px;background:color-mix(in srgb,var(--border) 40%,transparent);margin-bottom:4px;font-size:0.83rem;}
+.fs-result-item:hover{background:color-mix(in srgb,var(--accent) 10%,transparent);}
+.fs-icon{font-size:1rem;flex-shrink:0;}
+.fs-name{flex:1;color:var(--text);word-break:break-all;}
+.fs-open-btn{background:color-mix(in srgb,var(--accent) 15%,transparent);border:1px solid color-mix(in srgb,var(--accent) 40%,transparent);color:var(--accent);padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;white-space:nowrap;flex-shrink:0;}
+.fs-open-btn:hover{background:var(--accent);color:white;}
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px;}
 </style>
 </head>
 <body>
 
-<!-- HEADER -->
 <header>
-  <span style="font-size:1.4rem;">🤖</span>
+  <span style="font-size:1.4rem;">&#x1F916;</span>
   <h1>AION</h1>
   <span class="version">v{{ version }}</span>
   <div class="spacer"></div>
-  <button class="header-btn" onclick="toggleTheme()">🌓 Thème</button>
+  <button class="header-btn" onclick="toggleTheme()">&#x1F313; Theme</button>
   <a href="/docs" target="_blank" style="text-decoration:none;">
-    <button class="header-btn">📖 API</button>
+    <button class="header-btn">&#x1F4D6; API</button>
   </a>
 </header>
 
-<!-- LAYOUT -->
 <div class="layout">
-
-  <!-- SIDEBAR -->
   <nav class="sidebar">
     <div class="sidebar-title">Navigation</div>
-    <ul id="nav-list" style="list-style:none; padding:0;">
+    <ul id="nav-list" style="list-style:none;padding:0;">
       <li class="nav-item active" data-section="status" onclick="loadSection(this)">
-        <span class="nav-icon">📊</span> Status
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x1F4CA;</span> Status
+        <span class="drag-handle">&#x22FF;</span>
       </li>
       <li class="nav-item" data-section="quickmind" onclick="loadSection(this)">
-        <span class="nav-icon">✅</span> QuickMind
-        <span class="drag-handle">⠿</span>
-      </li>
-      <li class="nav-item" data-section="services" onclick="loadSection(this)">
-        <span class="nav-icon">⚡</span> Services
-        <span class="drag-handle">⠿</span>
-      </li>
-      <li class="nav-item" data-section="scheduler" onclick="loadSection(this)">
-        <span class="nav-icon">⏱</span> Scheduler
-        <span class="drag-handle">⠿</span>
-      </li>
-      <li class="nav-item" data-section="memory" onclick="loadSection(this)">
-        <span class="nav-icon">🧠</span> Memory
-        <span class="drag-handle">⠿</span>
-      </li>
-      <li class="nav-item" data-section="fs_search" onclick="loadSection(this)">
-        <span class="nav-icon">🔍</span> Fichiers
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x2705;</span> QuickMind
+        <span class="drag-handle">&#x22FF;</span>
       </li>
       <li class="nav-item" data-section="ado" onclick="loadSection(this)">
-        <span class="nav-icon">🔵</span> Azure DevOps
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x1F535;</span> Azure DevOps
+        <span class="drag-handle">&#x22FF;</span>
+      </li>
+      <li class="nav-item" data-section="services" onclick="loadSection(this)">
+        <span class="nav-icon">&#x26A1;</span> Services
+        <span class="drag-handle">&#x22FF;</span>
+      </li>
+      <li class="nav-item" data-section="scheduler" onclick="loadSection(this)">
+        <span class="nav-icon">&#x23F1;</span> Scheduler
+        <span class="drag-handle">&#x22FF;</span>
+      </li>
+      <li class="nav-item" data-section="memory" onclick="loadSection(this)">
+        <span class="nav-icon">&#x1F9E0;</span> Memory
+        <span class="drag-handle">&#x22FF;</span>
       </li>
       <li class="nav-item" data-section="network" onclick="loadSection(this)">
-        <span class="nav-icon">🌐</span> Network
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x1F310;</span> Network
+        <span class="drag-handle">&#x22FF;</span>
       </li>
       <li class="nav-item" data-section="system" onclick="loadSection(this)">
-        <span class="nav-icon">🖥️</span> System
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x1F5A5;</span> System
+        <span class="drag-handle">&#x22FF;</span>
       </li>
       <li class="nav-item" data-section="docker" onclick="loadSection(this)">
-        <span class="nav-icon">🐳</span> Docker
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x1F433;</span> Docker
+        <span class="drag-handle">&#x22FF;</span>
+      </li>
+      <li class="nav-item" data-section="fs_search" onclick="loadSection(this)">
+        <span class="nav-icon">&#x1F50D;</span> Fichiers
+        <span class="drag-handle">&#x22FF;</span>
       </li>
       <li class="nav-item" data-section="console" onclick="loadSection(this)">
-        <span class="nav-icon">💬</span> Console
-        <span class="drag-handle">⠿</span>
+        <span class="nav-icon">&#x1F4AC;</span> Console
+        <span class="drag-handle">&#x22FF;</span>
+      </li>
+      <li class="nav-item" data-section="help" onclick="loadSection(this)">
+        <span class="nav-icon">&#x1F4D6;</span> Aide
+        <span class="drag-handle">&#x22FF;</span>
       </li>
     </ul>
   </nav>
 
-  <!-- MAIN CONTENT -->
   <main class="main" id="main-content">
-    <!-- Chargé dynamiquement -->
     <div hx-get="/section/status" hx-trigger="load" hx-swap="innerHTML"></div>
   </main>
-
 </div>
 
 <script>
@@ -500,20 +207,19 @@ function loadSection(el) {
   document.querySelectorAll(".nav-item").forEach(i => i.classList.remove("active"));
   el.classList.add("active");
   const section = el.dataset.section;
-  const main = document.getElementById("main-content");
-  main.innerHTML = '<div style="color:var(--text-dim); padding:40px; text-align:center;">Chargement...</div>';
+  const main    = document.getElementById("main-content");
+  main.innerHTML = '<div style="color:var(--text-dim);padding:40px;text-align:center;">Chargement...</div>';
   fetch(`/section/${section}`)
     .then(r => r.text())
     .then(html => { main.innerHTML = html; htmx.process(main); });
 }
 
-// ── Drag & Drop sidebar (SortableJS + localStorage) ───────────────────────────
-const navList = document.getElementById("nav-list");
-const STORAGE_KEY = "aion_sidebar_order";
+// ── Drag & Drop ───────────────────────────────────────────────────────────────
+const navList    = document.getElementById("nav-list");
+const STORAGE_KEY = "aion_sidebar_order_v2";
 
 function saveSidebarOrder() {
-  const order = [...navList.querySelectorAll(".nav-item")]
-    .map(el => el.dataset.section);
+  const order = [...navList.querySelectorAll(".nav-item")].map(el => el.dataset.section);
   localStorage.setItem(STORAGE_KEY, JSON.stringify(order));
 }
 
@@ -531,45 +237,154 @@ Sortable.create(navList, {
   animation: 150,
   handle: ".drag-handle",
   ghostClass: "sortable-ghost",
-  dragClass: "sortable-drag",
   onEnd: saveSidebarOrder,
 });
-
 restoreSidebarOrder();
 
-// ── Thème dark/light ──────────────────────────────────────────────────────────
+// ── Theme ─────────────────────────────────────────────────────────────────────
 function toggleTheme() {
-  const html = document.documentElement;
+  const html    = document.documentElement;
   const current = html.getAttribute("data-theme");
-  const next = current === "dark" ? "light" : "dark";
+  const next    = current === "dark" ? "light" : "dark";
   html.setAttribute("data-theme", next);
   localStorage.setItem("aion_theme", next);
 }
-
 const savedTheme = localStorage.getItem("aion_theme");
 if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
 
-// ── Console : historique + Tab autocompletion ─────────────────────────────────
-window.consoleHistory = [];
-window.historyIndex = -1;
+// ══════════════════════════════════════════════════════════════════════════════
+// Console + Intellisense
+// ══════════════════════════════════════════════════════════════════════════════
 
-function consoleKeyDown(e, services) {
-  const input = e.target;
-  if (e.key === "Enter") {
-    e.preventDefault();
-    submitConsole(input);
+window.consoleHistory = [];
+window.historyIndex   = -1;
+window.intellisenseIdx = -1;
+
+// Base de suggestions — domaines + commandes core
+const SUGGESTIONS = [
+  // ADO
+  {cmd:"ado get item ",         desc:"Voir un work item (ex: ado get item 191614)"},
+  {cmd:"ado status change ",    desc:"Changer le statut (ex: ado status change 191614 Done)"},
+  {cmd:"ado list",              desc:"Lister les work items"},
+  {cmd:"ado list --state ",     desc:"Filtrer par etat (ex: --state In Progress)"},
+  {cmd:"ado list --type ",      desc:"Filtrer par type (ex: --type Bug)"},
+  {cmd:"ado my",                desc:"Mes work items assignes"},
+  {cmd:"ado open ",             desc:"Ouvrir dans le navigateur"},
+  {cmd:"ado project ",          desc:"Changer le projet par defaut"},
+  {cmd:"ado ?",                 desc:"Aide du domaine ADO"},
+  // NET
+  {cmd:"net status",            desc:"Statut reseau complet"},
+  {cmd:"net myip",              desc:"IP publique"},
+  {cmd:"net ping",              desc:"Ping 8.8.8.8"},
+  {cmd:"net ping ",             desc:"Ping un hote specifique"},
+  // SYS
+  {cmd:"sys cpu",               desc:"Utilisation CPU et RAM"},
+  {cmd:"sys disk",              desc:"Etat des disques"},
+  {cmd:"sys uptime",            desc:"Temps de fonctionnement"},
+  {cmd:"sys info",              desc:"Informations systeme"},
+  // FS
+  {cmd:"fs search ",            desc:"Rechercher des fichiers (ex: fs search Rapport)"},
+  {cmd:"fs search ",            desc:"Avec chemin (ex: fs search Rapport --path C:\\docs)"},
+  // QM
+  {cmd:"qm add ",               desc:"Creer une tache (ex: qm add RDV demain)"},
+  {cmd:"qm list",               desc:"Lister les taches"},
+  {cmd:"qm list --priority ",   desc:"Filtrer par priorite (urgent/high/normal/low)"},
+  {cmd:"qm done ",              desc:"Marquer une tache comme terminee"},
+  {cmd:"qm health",             desc:"Verifier QuickMind"},
+  {cmd:"qm ?",                  desc:"Aide QuickMind"},
+  // DOCKER
+  {cmd:"docker status",         desc:"Lister les conteneurs Docker"},
+  // CORE
+  {cmd:"status",                desc:"Statut general AION"},
+  {cmd:"services",              desc:"Liste des services"},
+  {cmd:"domains",               desc:"Liste des domaines"},
+  {cmd:"shortcuts",             desc:"Tous les raccourcis par domaine"},
+  {cmd:"scheduler",             desc:"Jobs planifies"},
+  {cmd:"memory",                desc:"Memoire persistante"},
+  {cmd:"reload",                desc:"Recharger les services"},
+  {cmd:"help",                  desc:"Aide complete"},
+  {cmd:"remember ",             desc:"Memoriser (ex: remember cle=valeur)"},
+  {cmd:"recall ",               desc:"Lire une valeur memorisee"},
+  {cmd:"schedule ",             desc:"Planifier (ex: schedule net_status every 60s)"},
+];
+
+function getIntellisense(input) {
+  const val = input.toLowerCase().trim();
+  if (!val) return [];
+  return SUGGESTIONS.filter(s =>
+    s.cmd.toLowerCase().startsWith(val) ||
+    s.cmd.toLowerCase().includes(val)
+  ).slice(0, 8);
+}
+
+function showIntellisense(input) {
+  const box   = document.getElementById("intellisense-box");
+  const items = getIntellisense(input);
+
+  if (!items.length || !input.trim()) {
+    box.style.display = "none";
+    window.intellisenseIdx = -1;
     return;
   }
-  if (e.key === "ArrowUp") {
+
+  box.innerHTML = items.map((item, i) =>
+    `<div class="intellisense-item" data-cmd="${item.cmd}"
+          onclick="applyIntellisense('${item.cmd.replace(/'/g,"\'")}')"
+          id="is-item-${i}">
+       <span class="intellisense-cmd">${item.cmd}</span>
+       <span class="intellisense-desc">${item.desc}</span>
+     </div>`
+  ).join("");
+  box.style.display = "block";
+}
+
+function applyIntellisense(cmd) {
+  const input = document.getElementById("console-input");
+  input.value = cmd;
+  input.focus();
+  document.getElementById("intellisense-box").style.display = "none";
+  window.intellisenseIdx = -1;
+}
+
+function consoleKeyDown(e) {
+  const input = e.target;
+  const box   = document.getElementById("intellisense-box");
+  const items = box.querySelectorAll(".intellisense-item");
+
+  if (e.key === "Enter") {
     e.preventDefault();
-    if (window.historyIndex < window.consoleHistory.length - 1) {
-      window.historyIndex++;
-      input.value = window.consoleHistory[window.consoleHistory.length - 1 - window.historyIndex];
+    if (window.intellisenseIdx >= 0 && items[window.intellisenseIdx]) {
+      applyIntellisense(items[window.intellisenseIdx].dataset.cmd);
+    } else {
+      submitConsole(input);
     }
     return;
   }
-  if (e.key === "ArrowDown") {
+
+  if (e.key === "Escape") {
+    box.style.display = "none";
+    window.intellisenseIdx = -1;
+    return;
+  }
+
+  if (e.key === "Tab") {
     e.preventDefault();
+    if (box.style.display !== "none" && items.length > 0) {
+      // Naviguer dans l intellisense
+      window.intellisenseIdx = (window.intellisenseIdx + 1) % items.length;
+      items.forEach((el, i) => el.classList.toggle("selected", i === window.intellisenseIdx));
+      input.value = items[window.intellisenseIdx].dataset.cmd;
+    }
+    return;
+  }
+
+  if (e.key === "ArrowDown") {
+    if (box.style.display !== "none" && items.length > 0) {
+      e.preventDefault();
+      window.intellisenseIdx = Math.min(window.intellisenseIdx + 1, items.length - 1);
+      items.forEach((el, i) => el.classList.toggle("selected", i === window.intellisenseIdx));
+      return;
+    }
     if (window.historyIndex > 0) {
       window.historyIndex--;
       input.value = window.consoleHistory[window.consoleHistory.length - 1 - window.historyIndex];
@@ -579,21 +394,31 @@ function consoleKeyDown(e, services) {
     }
     return;
   }
-  if (e.key === "Tab") {
-    e.preventDefault();
-    const val = input.value;
-    if (val.startsWith("run ")) {
-      const partial = val.slice(4);
-      const match = services.find(s => s.startsWith(partial));
-      if (match) input.value = "run " + match;
+
+  if (e.key === "ArrowUp") {
+    if (box.style.display !== "none" && items.length > 0) {
+      e.preventDefault();
+      window.intellisenseIdx = Math.max(window.intellisenseIdx - 1, 0);
+      items.forEach((el, i) => el.classList.toggle("selected", i === window.intellisenseIdx));
+      return;
+    }
+    if (window.historyIndex < window.consoleHistory.length - 1) {
+      window.historyIndex++;
+      input.value = window.consoleHistory[window.consoleHistory.length - 1 - window.historyIndex];
     }
     return;
   }
+
+  // Rafraichir l intellisense apres chaque frappe
+  setTimeout(() => showIntellisense(input.value), 50);
 }
 
 function submitConsole(input) {
   const cmd = input.value.trim();
   if (!cmd) return;
+
+  document.getElementById("intellisense-box").style.display = "none";
+  window.intellisenseIdx = -1;
   window.consoleHistory.push(cmd);
   window.historyIndex = -1;
 
