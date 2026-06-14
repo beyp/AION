@@ -26,9 +26,13 @@
         type="text"
         value="search_dir"
         placeholder="Cle memoire"
+        list="fs-path-keys"
         style="flex:1;min-width:120px;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
+      <datalist id="fs-path-keys">
+        <!-- Rempli dynamiquement par loadFsPathKeys() -->
+      </datalist>
       <button
         class="qm-submit"
         style="background:var(--accent);"
@@ -62,6 +66,31 @@
 
 <script>
 // ── Recherche ─────────────────────────────────────────────────────────────────
+// Charger les cles path memoire pour le datalist
+window.loadFsPathKeys = function() {
+  fetch("/api/memory/paths")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      var dl = document.getElementById("fs-path-keys");
+      if (!dl) return;
+      dl.innerHTML = "";
+      data.forEach(function(item) {
+        var opt = document.createElement("option");
+        opt.value = item.key;
+        opt.label = item.value;
+        dl.appendChild(opt);
+      });
+      // Si une seule cle path, la mettre par defaut
+      if (data.length === 1) {
+        var inp = document.getElementById("fs-memkey");
+        if (inp && inp.value === "search_dir") inp.value = data[0].key;
+      }
+    })
+    .catch(function() {});
+};
+// Charger au demarrage de la section
+window.loadFsPathKeys();
+
 window.fsDoSearch = function() {
   var keywords   = (document.getElementById("fs-keywords")  || {}).value || "";
   var directory  = (document.getElementById("fs-directory") || {}).value || "";

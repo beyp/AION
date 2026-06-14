@@ -270,7 +270,7 @@ window.historyIndex   = -1;
 window.intellisenseIdx = -1;
 
 // Base de suggestions — domaines + commandes core
-const SUGGESTIONS = [
+const SUGGESTIONS_BASE = [
   // ADO
   {cmd:"ado get item ",         desc:"Voir un work item (ex: ado get item 191614)"},
   {cmd:"ado status change ",    desc:"Changer le statut (ex: ado status change 191614 Done)"},
@@ -291,9 +291,11 @@ const SUGGESTIONS = [
   {cmd:"sys disk",              desc:"Etat des disques"},
   {cmd:"sys uptime",            desc:"Temps de fonctionnement"},
   {cmd:"sys info",              desc:"Informations systeme"},
-  // FS
+  // FS — les suggestions --key seront ajoutees dynamiquement
   {cmd:"fs search ",            desc:"Rechercher des fichiers (ex: fs search Rapport)"},
   {cmd:"fs search ",            desc:"Avec chemin (ex: fs search Rapport --path C:\\docs)"},
+  {cmd:"fs open ",              desc:"Ouvrir fichier par numero (ex: fs open 1)"},
+  {cmd:"fs edit ",              desc:"Editer fichier par numero (ex: fs edit 1)"},
   // QM
   {cmd:"qm add ",               desc:"Creer une tache (ex: qm add RDV demain)"},
   {cmd:"qm list",               desc:"Lister les taches"},
@@ -317,10 +319,54 @@ const SUGGESTIONS = [
   {cmd:"schedule ",             desc:"Planifier (ex: schedule net_status every 60s)"},
 ];
 
+// Clés mémoire de type path — chargées au démarrage
+window.MEMORY_PATHS = [];
+
+function loadMemoryPaths() {
+  fetch("/api/memory/paths")
+    .then(function(r) { return r.json(); })
+    .then(function(data) {
+      window.MEMORY_PATHS = data || [];
+      // Ajouter les suggestions fs search --key <cle>
+      var fsSuggestions = data.map(function(item) {
+        return {
+          cmd:  "fs search  --key " + item.key,
+          desc: "Chercher dans " + item.value,
+        };
+      });
+      window.SUGGESTIONS = SUGGESTIONS_BASE.concat(fsSuggestions);
+      console.log("AION: " + data.length + " cle(s) memoire path chargees");
+    })
+    .catch(function() {
+      window.SUGGESTIONS = SUGGESTIONS_BASE;
+    });
+}
+
+// Charger au demarrage
+loadMemoryPaths();
+
+// Alias — SUGGESTIONS sera mis a jour par loadMemoryPaths
+var SUGGESTIONS = SUGGESTIONS_BASE;
+
 function getIntellisense(input) {
-  const val = input.toLowerCase().trim();
+  const val  = input.toLowerCase().trim();
   if (!val) return [];
-  return SUGGESTIONS.filter(s =>
+  // Utiliser window.SUGGESTIONS (mis a jour avec les memory paths)
+  const sugs = window.SUGGESTIONS || SUGGESTIONS_BASE;
+
+  // Mode special : si on tape "fs search" → montrer aussi les --key
+  if (val.startsWith("fs search") || val.startsWith("fs s")) {
+    const fsSugs = (window.MEMORY_PATHS || []).map(function(item) {
+      return {
+        cmd:  "fs search  --key " + item.key,
+        desc: "&#x1F4C1; " + item.value,
+      };
+    });
+    const base = sugs.filter(s => s.cmd.toLowerCase().startsWith(val)).slice(0, 4);
+    return base.concat(fsSugs).slice(0, 10);
+  }
+
+  return sugs.filter(s =>
     s.cmd.toLowerCase().startsWith(val) ||
     s.cmd.toLowerCase().includes(val)
   ).slice(0, 8);

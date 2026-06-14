@@ -724,6 +724,19 @@ async def remove_job(job_id: str):
     return HTMLResponse('<span class="badge badge-red">Supprime</span>')
 
 
+@app.get("/api/memory/paths")
+async def get_memory_paths():
+    """Retourne les cles memoire de type path pour l autocompletion."""
+    items = memory.list_memory(memory_type="path")
+    result = []
+    for key, item in items.items():
+        result.append({
+            "key":   key,
+            "value": item.get("value", ""),
+        })
+    return result
+
+
 @app.post("/services/reload", response_class=HTMLResponse)
 async def reload_services():
     registry.reload_services()
