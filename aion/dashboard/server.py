@@ -192,8 +192,16 @@ async def section_ado(request: Request):
 
 @app.get("/section/fs_search", response_class=HTMLResponse)
 async def section_fs_search(request: Request):
+    # Passer les cles memoire de type path directement via Jinja2
+    path_items = memory.list_memory(memory_type="path")
+    path_keys  = [
+        {"key": k, "value": v.get("value", "")}
+        for k, v in path_items.items()
+    ]
     return templates.TemplateResponse(
-        request=request, name="sections/fs_search.html", context={},
+        request=request,
+        name="sections/fs_search.html",
+        context={"path_keys": path_keys},
     )
 
 

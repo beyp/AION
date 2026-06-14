@@ -3,6 +3,8 @@
 
   <div style="margin-bottom:16px;">
     <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:8px;">
+
+      <!-- Mots-clés -->
       <input
         class="qm-input"
         id="fs-keywords"
@@ -12,27 +14,42 @@
         style="flex:2;min-width:200px;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
+
+      <!-- Répertoire direct (optionnel) -->
       <input
         class="qm-input"
         id="fs-directory"
         type="text"
-        placeholder="Repertoire (optionnel si memorise)"
+        placeholder="Repertoire direct (optionnel)"
         style="flex:2;min-width:200px;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
+
+      <!-- Select des clés mémoire path — peuplé par Jinja2 -->
+      {% if path_keys %}
+      <select class="qm-select" id="fs-memkey" style="flex:1;min-width:140px;">
+        <option value="">-- Choisir un dossier --</option>
+        {% for item in path_keys %}
+        <option value="{{ item.key }}" title="{{ item.value }}">
+          {{ item.key }} — {{ item.value[:30] }}{% if item.value|length > 30 %}...{% endif %}
+        </option>
+        {% endfor %}
+      </select>
+      {% else %}
       <input
         class="qm-input"
         id="fs-memkey"
         type="text"
         value="search_dir"
-        placeholder="Cle memoire"
-        list="fs-path-keys"
-        style="flex:1;min-width:120px;"
+        placeholder="Cle memoire path"
+        style="flex:1;min-width:140px;"
         onkeydown="if(event.key==='Enter'){event.preventDefault();window.fsDoSearch();}"
       >
-      <datalist id="fs-path-keys">
-        <!-- Rempli dynamiquement par loadFsPathKeys() -->
-      </datalist>
+      <div style="color:var(--text-dim);font-size:0.75rem;align-self:center;white-space:nowrap;">
+        &#x26A0; Aucun dossier memorise
+      </div>
+      {% endif %}
+
       <button
         class="qm-submit"
         style="background:var(--accent);"
@@ -40,12 +57,24 @@
         &#x1F50D; Chercher
       </button>
     </div>
+
+    <!-- Aide contextuelle -->
+    {% if path_keys %}
     <div style="color:var(--text-dim);font-size:0.78rem;padding:4px 0;">
-      &#x1F4A1; Memorise un dossier :
+      &#x1F4C1; {{ path_keys|length }} dossier(s) memorise(s) |
+      Pour en ajouter :
       <code style="background:var(--border);padding:1px 6px;border-radius:3px;">
-        remember path search_dir=C:\ton\dossier
+        remember path monDossier=C:\chemin
       </code>
     </div>
+    {% else %}
+    <div style="color:var(--orange);font-size:0.78rem;padding:4px 0;">
+      &#x1F4A1; Memorise un dossier pour l avoir ici :
+      <code style="background:var(--border);padding:1px 6px;border-radius:3px;">
+        remember path AIONPath=C:\code\python\AION
+      </code>
+    </div>
+    {% endif %}
   </div>
 
   <div id="fs-results"></div>
@@ -65,48 +94,32 @@
 </style>
 
 <script>
-// ── Recherche ─────────────────────────────────────────────────────────────────
-// Charger les cles path memoire pour le datalist
-window.loadFsPathKeys = function() {
-  fetch("/api/memory/paths")
-    .then(function(r) { return r.json(); })
-    .then(function(data) {
-      var dl = document.getElementById("fs-path-keys");
-      if (!dl) return;
-      dl.innerHTML = "";
-      data.forEach(function(item) {
-        var opt = document.createElement("option");
-        opt.value = item.key;
-        opt.label = item.value;
-        dl.appendChild(opt);
-      });
-      // Si une seule cle path, la mettre par defaut
-      if (data.length === 1) {
-        var inp = document.getElementById("fs-memkey");
-        if (inp && inp.value === "search_dir") inp.value = data[0].key;
-      }
-    })
-    .catch(function() {});
-};
-// Charger au demarrage de la section
-window.loadFsPathKeys();
-
 window.fsDoSearch = function() {
   var keywords   = (document.getElementById("fs-keywords")  || {}).value || "";
   var directory  = (document.getElementById("fs-directory") || {}).value || "";
-  var memkey     = (document.getElementById("fs-memkey")    || {}).value || "search_dir";
+  var memkeyEl   = document.getElementById("fs-memkey");
+  var memkey     = memkeyEl ? memkeyEl.value : "search_dir";
   var resultsDiv = document.getElementById("fs-results");
 
   keywords = keywords.trim();
   if (!keywords) {
-    if (resultsDiv) resultsDiv.innerHTML = '<div style="color:var(--red);padding:8px;">Veuillez entrer des mots-cles.</div>';
+    if (resultsDiv) resultsDiv.innerHTML =
+      '<div style="color:var(--red);padding:8px;">Veuillez entrer des mots-cles.</div>';
     return;
   }
 
-  if (resultsDiv) resultsDiv.innerHTML = '<div style="color:var(--text-dim);padding:12px;text-align:center;">Recherche en cours...</div>';
+  if (resultsDiv) resultsDiv.innerHTML =
+    '<div style="color:var(--text-dim);padding:12px;text-align:center;">Recherche en cours...</div>';
 
-  var payload = { keywords: keywords, memory_key: memkey || "search_dir" };
-  if (directory.trim()) payload.directory = directory.trim();
+  var payload = { keywords: keywords };
+
+  // Si un répertoire direct est fourni, l utiliser
+  if (directory.trim()) {
+    payload.directory = directory.trim();
+  } else if (memkey && memkey !== "--") {
+    // Sinon utiliser la clé mémoire sélectionnée
+    payload.memory_key = memkey;
+  }
 
   fetch("/fs/search", {
     method: "POST",
@@ -124,15 +137,12 @@ window.fsDoSearch = function() {
   });
 };
 
-// ── Ouvrir fichier (os.startfile via /fs/open) ────────────────────────────────
 window.fsOpenFile = function(btn) {
   var path = btn.getAttribute("data-path");
   if (!path) return;
-
   var original = btn.textContent;
   btn.textContent = "...";
   btn.disabled = true;
-
   fetch("/fs/open", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -140,6 +150,7 @@ window.fsOpenFile = function(btn) {
   })
   .then(function(r) { return r.json(); })
   .then(function(data) {
+    btn.disabled = false;
     if (data.ok) {
       btn.textContent = "OK !";
       btn.style.background = "var(--green)";
@@ -150,14 +161,13 @@ window.fsOpenFile = function(btn) {
       btn.style.background = "var(--red)";
       btn.style.color = "white";
     }
-    btn.disabled = false;
     setTimeout(function() {
       btn.textContent = original;
       btn.style.background = "";
       btn.style.color = "";
     }, 2000);
   })
-  .catch(function(err) {
+  .catch(function() {
     btn.textContent = "Erreur";
     btn.style.background = "var(--red)";
     btn.style.color = "white";
@@ -165,12 +175,9 @@ window.fsOpenFile = function(btn) {
   });
 };
 
-// ── Editer fichier texte (affichage dans onglet navigateur) ───────────────────
 window.fsEditFile = function(btn) {
   var path = btn.getAttribute("data-path");
   if (!path) return;
-  // Ouvrir dans un nouvel onglet via /fs/view?path=...
-  var url = "/fs/view?path=" + encodeURIComponent(path);
-  window.open(url, "_blank");
+  window.open("/fs/view?path=" + encodeURIComponent(path), "_blank");
 };
 </script>
