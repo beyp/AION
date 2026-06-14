@@ -317,7 +317,7 @@ function getIntellisense(input) {
   ).slice(0, 8);
 }
 
-function showIntellisense(input) {
+window.showIntellisense = function(input) {
   const box   = document.getElementById("intellisense-box");
   const items = getIntellisense(input);
 
@@ -338,7 +338,7 @@ function showIntellisense(input) {
   box.style.display = "block";
 }
 
-function applyIntellisense(cmd) {
+window.applyIntellisense = function(cmd) {
   const input = document.getElementById("console-input");
   input.value = cmd;
   input.focus();
@@ -346,7 +346,7 @@ function applyIntellisense(cmd) {
   window.intellisenseIdx = -1;
 }
 
-function consoleKeyDown(e) {
+window.consoleKeyDown = function(e) {
   const input = e.target;
   const box   = document.getElementById("intellisense-box");
   const items = box.querySelectorAll(".intellisense-item");
@@ -413,18 +413,30 @@ function consoleKeyDown(e) {
   setTimeout(() => showIntellisense(input.value), 50);
 }
 
-function submitConsole(input) {
-  const cmd = input.value.trim();
+window.submitConsole = function(input) {
+  // Accepte un element DOM ou une string directement
+  let cmd, el;
+  if (typeof input === "string") {
+    cmd = input.trim();
+    el  = document.getElementById("console-input");
+    if (el) el.value = "";
+  } else {
+    el  = input;
+    cmd = el ? el.value.trim() : "";
+    if (el) el.value = "";
+  }
   if (!cmd) return;
 
-  document.getElementById("intellisense-box").style.display = "none";
-  window.intellisenseIdx = -1;
+  const ibox = document.getElementById("intellisense-box");
+  if (ibox) ibox.style.display = "none";
+
+  window.intellisenseIdx  = -1;
+  window.consoleHistory   = window.consoleHistory || [];
   window.consoleHistory.push(cmd);
   window.historyIndex = -1;
 
   const formData = new FormData();
   formData.append("command", cmd);
-  input.value = "";
 
   fetch("/console/run", { method: "POST", body: formData })
     .then(r => r.text())
@@ -435,7 +447,9 @@ function submitConsole(input) {
         history.scrollTop = history.scrollHeight;
       }
     });
-}
+};
+// Alias global accessible depuis tous les fragments
+window.quickCmd = function(cmd) { window.submitConsole(cmd); };
 </script>
 
 </body>

@@ -44,60 +44,76 @@ AION Console v0.7.2
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">ADO</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="quickCmd('ado list')">ado list</button>
-      <button class="run-btn" onclick="quickCmd('ado my')">ado my</button>
-      <button class="run-btn" onclick="quickCmd('ado list --state In Progress')">In Progress</button>
-      <button class="run-btn" onclick="quickCmd('ado list --type Bug --state Active')">Bugs actifs</button>
-      <button class="run-btn" onclick="quickCmd('ado ?')">ado ?</button>
+      <button class="run-btn" onclick="submitFromBtn('ado list')">ado list</button>
+      <button class="run-btn" onclick="submitFromBtn('ado my')">ado my</button>
+      <button class="run-btn" onclick="submitFromBtn('ado list --state In Progress')">In Progress</button>
+      <button class="run-btn" onclick="submitFromBtn('ado list --type Bug --state Active')">Bugs actifs</button>
+      <button class="run-btn" onclick="submitFromBtn('ado ?')">ado ?</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">NET</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="quickCmd('net status')">net status</button>
-      <button class="run-btn" onclick="quickCmd('net myip')">net myip</button>
-      <button class="run-btn" onclick="quickCmd('net ping')">net ping</button>
+      <button class="run-btn" onclick="submitFromBtn('net status')">net status</button>
+      <button class="run-btn" onclick="submitFromBtn('net myip')">net myip</button>
+      <button class="run-btn" onclick="submitFromBtn('net ping')">net ping</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">SYS</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="quickCmd('sys cpu')">sys cpu</button>
-      <button class="run-btn" onclick="quickCmd('sys disk')">sys disk</button>
-      <button class="run-btn" onclick="quickCmd('sys uptime')">sys uptime</button>
+      <button class="run-btn" onclick="submitFromBtn('sys cpu')">sys cpu</button>
+      <button class="run-btn" onclick="submitFromBtn('sys disk')">sys disk</button>
+      <button class="run-btn" onclick="submitFromBtn('sys uptime')">sys uptime</button>
     </div>
   </div>
 
   <div style="margin-bottom:10px;">
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">QM</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="quickCmd('qm list')">qm list</button>
-      <button class="run-btn" onclick="quickCmd('qm health')">qm health</button>
-      <button class="run-btn" onclick="quickCmd('qm ?')">qm ?</button>
+      <button class="run-btn" onclick="submitFromBtn('qm list')">qm list</button>
+      <button class="run-btn" onclick="submitFromBtn('qm health')">qm health</button>
+      <button class="run-btn" onclick="submitFromBtn('qm ?')">qm ?</button>
     </div>
   </div>
 
   <div>
     <span style="color:var(--text-dim);font-size:0.75rem;text-transform:uppercase;letter-spacing:1px;">CORE</span>
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:4px;">
-      <button class="run-btn" onclick="quickCmd('status')">status</button>
-      <button class="run-btn" onclick="quickCmd('services')">services</button>
-      <button class="run-btn" onclick="quickCmd('shortcuts')">shortcuts</button>
-      <button class="run-btn" onclick="quickCmd('domains')">domains</button>
-      <button class="run-btn" onclick="quickCmd('scheduler')">scheduler</button>
-      <button class="run-btn" onclick="quickCmd('memory')">memory</button>
+      <button class="run-btn" onclick="submitFromBtn('status')">status</button>
+      <button class="run-btn" onclick="submitFromBtn('services')">services</button>
+      <button class="run-btn" onclick="submitFromBtn('shortcuts')">shortcuts</button>
+      <button class="run-btn" onclick="submitFromBtn('domains')">domains</button>
+      <button class="run-btn" onclick="submitFromBtn('scheduler')">scheduler</button>
+      <button class="run-btn" onclick="submitFromBtn('memory')">memory</button>
     </div>
   </div>
 </div>
 
 <script>
-function quickCmd(cmd) {
+// submitFromBtn : fonctionne meme si window.quickCmd pas encore defini
+// car on fait tout en local ici
+function submitFromBtn(cmd) {
+  // 1. Mettre la commande dans l input si present
   const input = document.getElementById("console-input");
-  if (input) {
-    input.value = cmd;
-    submitConsole(input);
-  }
+
+  // 2. Envoyer directement via fetch (pas besoin de submitConsole)
+  const formData = new FormData();
+  formData.append("command", cmd);
+
+  if (input) input.value = "";
+
+  fetch("/console/run", { method: "POST", body: formData })
+    .then(r => r.text())
+    .then(html => {
+      const history = document.getElementById("console-history");
+      if (history) {
+        history.insertAdjacentHTML("beforeend", html);
+        history.scrollTop = history.scrollHeight;
+      }
+    })
+    .catch(err => console.error("AION console error:", err));
 }
 </script>
