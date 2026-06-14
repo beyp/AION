@@ -412,34 +412,66 @@ async def fs_search(request: Request):
         "mp4": "🎬", "mp3": "🎵",
     }
 
+    # Extensions ouvrables directement (pas les .py .exe etc.)
+    safe_open_exts  = {"pdf","docx","doc","xlsx","xls","pptx","ppt",
+                       "txt","png","jpg","jpeg","gif","mp4","mp3","zip"}
+    editable_exts   = {"py","js","ts","html","css","json","yaml","yml",
+                       "md","txt","ini","cfg","toml","csv","xml","sql"}
+
     for line in lines:
         if line.startswith("  OPEN:"):
-            rest             = line.replace("  OPEN:", "", 1)
-            fullpath, relpath = rest.split("|", 1)
-            ext              = fullpath.rsplit(".", 1)[-1].lower() if "." in fullpath else ""
-            icon             = ext_icons.get(ext, "📄")
-            safe_path        = h.escape(fullpath).replace("\\", "\\\\")
-            safe_relpath     = h.escape(relpath)
+            rest   = line.replace("  OPEN:", "", 1)
+            parts  = rest.split("|")
+            fullpath = parts[0]
+            relpath  = parts[1] if len(parts) > 1 else parts[0]
+            idx_num  = parts[2].strip() if len(parts) > 2 else ""
+
+            ext      = fullpath.rsplit(".", 1)[-1].lower() if "." in fullpath else ""
+            icon     = ext_icons.get(ext, "\U0001f4c4")
+
+            # Encoder le chemin proprement pour JS (JSON encode)
+            import json as _json
+            js_path     = _json.dumps(fullpath)   # ex: "C:\\code\\..."
+            safe_relpath = h.escape(relpath)
+            idx_label    = f"[{idx_num}] " if idx_num else ""
+
+            btns = ""
+            # Bouton Ouvrir — seulement pour extensions sures
+            if ext in safe_open_exts:
+                btns += (
+                    f'<button class="fs-open-btn" '
+                    f'onclick='
+                    f'"window.openFile({js_path}, this)">'
+                    f'&#x2197; Ouvrir</button>'
+                )
+            # Bouton VS Code — pour tous les fichiers texte/code
+            if ext in editable_exts or ext not in safe_open_exts:
+                btns += (
+                    f'<button class="fs-open-btn" '
+                    f'style="background:color-mix(in srgb,#007ACC 20%,transparent);'
+                    f'border-color:#007ACC55;color:#007ACC;" '
+                    f'onclick="window.editFile({js_path}, this)">'
+                    f'&#x1F4DD; VS Code</button>'
+                )
+
             html_parts.append(
                 f'<div class="fs-result-item">'
                 f'<span class="fs-icon">{icon}</span>'
-                f'<span class="fs-name">{safe_relpath}</span>'
-                f'<button class="fs-open-btn" onclick="openFile(\'{safe_path}\', this)">'
-                f'↗ Ouvrir</button></div>'
-            )
-        elif line.startswith("  -"):
-            html_parts.append(
-                f'<hr style="border-color:var(--border); margin:6px 0;">'
+                f'<span class="fs-name" title="{h.escape(fullpath)}">'
+                f'{idx_label}{safe_relpath}</span>'
+                f'{btns}'
+                f'</div>'
             )
         elif "aucun fichier" in line.lower():
             html_parts.append(
                 f'<div style="color:var(--text-dim);padding:16px;text-align:center;">'
-                f'😶 {h.escape(line)}</div>'
+                f'&#x1F636; {h.escape(line)}</div>'
             )
-        elif line.strip():
+        elif line.strip() and not line.strip().startswith("fs open") and not line.strip().startswith("fs edit"):
             html_parts.append(
                 f'<div class="stat-row">'
-                f'<span style="color:var(--text-dim);font-size:0.82rem;">{h.escape(line)}</span>'
+                f'<span style="color:var(--text-dim);font-size:0.82rem;">'
+                f'{h.escape(line)}</span>'
                 f'</div>'
             )
 
@@ -462,6 +494,32 @@ async def fs_open(request: Request):
 
 
 # ── QuickMind ─────────────────────────────────────────────────────────────────
+
+@app.post("/fs/edit")
+async def fs_edit(request: Request):
+    """Ouvre un fichier dans VS Code."""
+    body = await request.json()
+    path = body.get("path", "")
+    try:
+        import subprocess
+        subprocess.Popen(["code", path])
+        return JSONResponse({"ok": True})
+    except FileNotFoundError:
+        # VS Code pas dans PATH — essayer chemin complet Windows
+        import os
+        username = os.environ.get("USERNAME", "")
+        vscode_paths = [
+            rf"C:\Users\{username}\AppData\Local\Programs\Microsoft VS Code\Code.exe",
+            r"C:\Program Files\Microsoft VS Code\Code.exe",
+        ]
+        for vp in vscode_paths:
+            if os.path.exists(vp):
+                subprocess.Popen([vp, path])
+                return JSONResponse({"ok": True})
+        return JSONResponse({"ok": False, "error": "VS Code introuvable. Ajoute 'code' dans le PATH."})
+    except Exception as exc:
+        return JSONResponse({"ok": False, "error": str(exc)})
+
 
 @app.post("/quickmind/task", response_class=HTMLResponse)
 async def qm_create_task(

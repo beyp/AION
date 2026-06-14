@@ -251,9 +251,93 @@ class DomainRouter:
             if directory:
                 payload["directory"] = directory
 
-            return self._executor.execute("fs_search", payload)
+            raw = self._executor.execute("fs_search", payload)
+            return self._format_fs_result(raw)
+
+        # fs open <n> — ouvrir un fichier par son numero
+        if p.action == "open":
+            return self._fs_open_by_index(p.args, use_vscode=False)
+
+        # fs edit <n> — ouvrir dans VS Code
+        if p.action == "edit":
+            return self._fs_open_by_index(p.args, use_vscode=True)
 
         return get_domain_help("fs")
+
+    def _format_fs_result(self, raw: str) -> str:
+        """Nettoie l affichage fs_search : remplace OPEN:path|rel|n par [n] rel."""
+        lines = raw.splitlines()
+        clean = []
+        for line in lines:
+            if "OPEN:" in line:
+                try:
+                    rest   = line.replace("  OPEN:", "", 1)
+                    parts  = rest.split("|")
+                    relpath = parts[1] if len(parts) > 1 else parts[0]
+                    idx     = parts[2] if len(parts) > 2 else "?"
+                    clean.append(f"  [{idx}] {relpath}")
+                except Exception:
+                    clean.append(line)
+            else:
+                clean.append(line)
+        clean.append("")
+        clean.append("  fs open <n>  : ouvrir le fichier numero n")
+        clean.append("  fs edit <n>  : ouvrir dans VS Code")
+        return "\n".join(clean)
+
+    def _fs_open_by_index(self, args: list[str], use_vscode: bool = False) -> str:
+        """Ouvre un fichier par son numero depuis le dernier fs search."""
+        if not args:
+            action = "edit" if use_vscode else "open"
+            return f"Format : fs {action} <numero>  (ex: fs {action} 1)"
+
+        idx_str = args[0]
+        if not idx_str.isdigit():
+            return f"Format : fs {'edit' if use_vscode else 'open'} <numero>"
+
+        idx = int(idx_str) - 1  # 0-based
+
+        try:
+            import json as _json
+            from aion.memory.memory_manager import MemoryManager
+            last = MemoryManager().recall_temp("_fs_last_results")
+            if not last:
+                return (
+                    "fs open : aucun resultat precedent.\n"
+                    "  Lance d abord : fs search <mots-cles>"
+                )
+            paths = _json.loads(last)
+            if idx < 0 or idx >= len(paths):
+                return f"fs open : numero invalide. Disponibles : 1 a {len(paths)}"
+
+            filepath = paths[idx]
+
+            if use_vscode:
+                import subprocess
+                try:
+                    subprocess.Popen(["code", filepath])
+                    return f"fs edit : ouverture VS Code -> {filepath}"
+                except FileNotFoundError:
+                    return (
+                        f"fs edit : VS Code introuvable dans le PATH.\n"
+                        f"  Chemin : {filepath}\n"
+                        f"  Lance manuellement : code \"{filepath}\""
+                    )
+            else:
+                import os
+                # Securite : ne pas ouvrir les .py, .exe, .bat directement
+                ext = filepath.rsplit(".", 1)[-1].lower() if "." in filepath else ""
+                blocked = {"py", "exe", "bat", "cmd", "ps1", "sh"}
+                if ext in blocked:
+                    return (
+                        f"fs open : ouverture bloquee pour .{ext} (securite).\n"
+                        f"  Utilise plutot : fs edit {idx + 1}  (VS Code)"
+                    )
+                os.startfile(filepath)
+                return f"fs open : ouverture -> {filepath}"
+
+        except Exception as exc:
+            return f"fs open : erreur -> {exc}"
 
     # ── QM ────────────────────────────────────────────────────────────────────
 

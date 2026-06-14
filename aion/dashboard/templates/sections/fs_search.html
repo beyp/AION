@@ -100,12 +100,45 @@ window.openFile = function(path, btnEl) {
   .then(function(r) { return r.json(); })
   .then(function(data) {
     if (data.ok) {
-      if (btnEl) { btnEl.textContent = "OK Ouvert"; btnEl.style.background = "var(--green)"; btnEl.style.color = "white"; }
-      setTimeout(function() {
-        if (btnEl) { btnEl.textContent = "&#x2197; Ouvrir"; btnEl.style.background = ""; btnEl.style.color = ""; }
-      }, 2000);
+      if (btnEl) {
+        btnEl.textContent = "Ouvert !";
+        btnEl.style.background = "var(--green)";
+        btnEl.style.color = "white";
+        setTimeout(function() {
+          if (btnEl) { btnEl.textContent = "\u2197 Ouvrir"; btnEl.style.background = ""; btnEl.style.color = ""; }
+        }, 2000);
+      }
     } else {
       if (btnEl) { btnEl.textContent = "Erreur"; btnEl.style.background = "var(--red)"; btnEl.style.color = "white"; }
+    }
+  });
+};
+
+window.editFile = function(path, btnEl) {
+  fetch("/fs/edit", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: path }),
+  })
+  .then(function(r) { return r.json(); })
+  .then(function(data) {
+    if (data.ok) {
+      if (btnEl) {
+        btnEl.textContent = "Ouvert !";
+        btnEl.style.background = "var(--green)";
+        btnEl.style.color = "white";
+        setTimeout(function() {
+          if (btnEl) { btnEl.textContent = "\uD83D\uDCDD VS Code"; btnEl.style.background = ""; btnEl.style.color = ""; }
+        }, 2000);
+      }
+    } else {
+      if (btnEl) {
+        var msg = data.error || "Erreur";
+        btnEl.title = msg;
+        btnEl.textContent = "Erreur";
+        btnEl.style.background = "var(--red)";
+        btnEl.style.color = "white";
+      }
     }
   });
 };
