@@ -165,6 +165,10 @@ header .spacer{flex:1;}
         <span class="nav-icon">&#x23F1;</span> Scheduler
         <span class="drag-handle">&#x22FF;</span>
       </li>
+      <li class="nav-item" data-section="timer" onclick="loadSection(this)">
+        <span class="nav-icon">&#x23F0;</span> Timer
+        <span class="drag-handle">&#x22FF;</span>
+      </li>
       <li class="nav-item" data-section="memory" onclick="loadSection(this)">
         <span class="nav-icon">&#x1F9E0;</span> Memory
         <span class="drag-handle">&#x22FF;</span>
@@ -305,6 +309,14 @@ const SUGGESTIONS_BASE = [
   {cmd:"qm ?",                  desc:"Aide QuickMind"},
   // DOCKER
   {cmd:"docker status",         desc:"Lister les conteneurs Docker"},
+  // TIMER
+  {cmd:"timer 5m",              desc:"Timer 5 minutes avec notification"},
+  {cmd:"timer 25m ",            desc:"Timer avec message (ex: timer 25m Pause !)"},
+  {cmd:"timer 1h30m ",          desc:"Timer 1h30"},
+  {cmd:"timer 90",              desc:"Timer 90 secondes"},
+  {cmd:"timer status",          desc:"Lister les timers actifs"},
+  {cmd:"timer cancel ",         desc:"Annuler un timer (ex: timer cancel timer_1)"},
+  {cmd:"timer ?",               desc:"Aide du domaine timer"},
   // CORE
   {cmd:"status",                desc:"Statut general AION"},
   {cmd:"services",              desc:"Liste des services"},
@@ -353,6 +365,19 @@ function getIntellisense(input) {
   if (!val) return [];
   // Utiliser window.SUGGESTIONS (mis a jour avec les memory paths)
   const sugs = window.SUGGESTIONS || SUGGESTIONS_BASE;
+
+  // Mode special timer : montrer les durées rapides
+  if (val.startsWith("timer") && !val.includes(" ")) {
+    return [
+      {cmd:"timer 5m",    desc:"5 minutes"},
+      {cmd:"timer 10m",   desc:"10 minutes"},
+      {cmd:"timer 15m",   desc:"15 minutes"},
+      {cmd:"timer 25m",   desc:"25 min (Pomodoro)"},
+      {cmd:"timer 30m",   desc:"30 minutes"},
+      {cmd:"timer 1h",    desc:"1 heure"},
+      {cmd:"timer status",desc:"Timers actifs"},
+    ].filter(s => s.cmd.startsWith(val));
+  }
 
   // Mode special : si on tape "fs search" → montrer aussi les --key
   if (val.startsWith("fs search") || val.startsWith("fs s")) {

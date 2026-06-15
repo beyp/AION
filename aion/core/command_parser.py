@@ -179,6 +179,25 @@ DOMAIN_HELP: dict[str, dict[str, list[tuple[str, str]]]] = {
         "_desc": "Services Docker",
         "status": [("docker status", "Lister les conteneurs actifs")],
     },
+    "timer": {
+        "_desc": "Compte a rebours avec notification et bip",
+        "5m": [
+            ("timer 5m",                          "Timer de 5 minutes"),
+            ("timer 25m Pause Pomodoro !",        "Timer avec message"),
+            ("timer 1h30m Reunion terminee",      "Timer 1h30"),
+            ("timer 90",                          "90 secondes"),
+            ("timer 2:30 Temps ecoule",           "Format mm:ss"),
+            ("timer 5m --beeps 5",                "Avec 5 bips de fin"),
+            ("timer 5m --beeps 0",                "Sans bip"),
+        ],
+        "status": [
+            ("timer status",                      "Lister les timers actifs"),
+        ],
+        "cancel": [
+            ("timer cancel <id>",                 "Annuler un timer"),
+            ("timer cancel timer_1",              "Exemple"),
+        ],
+    },
 }
 
 

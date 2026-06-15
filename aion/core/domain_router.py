@@ -21,7 +21,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 # Domaines reconnus par le router
-ROUTED_DOMAINS = {"ado", "net", "sys", "fs", "qm", "docker"}
+ROUTED_DOMAINS = {"ado", "net", "sys", "fs", "qm", "docker", "timer"}
 
 # Projet ADO par defaut (modifiable par "ado project <nom>")
 _ado_default_project = "PTG - TMM D2"
@@ -73,6 +73,7 @@ class DomainRouter:
             "fs":     self._fs,
             "qm":     self._qm,
             "docker": self._docker,
+            "timer":  self._timer,
         }.get(parsed.domain)
 
         if router_fn is None:
@@ -415,6 +416,62 @@ class DomainRouter:
             return int(val)
         except (ValueError, TypeError):
             return None
+
+    # ── TIMER ─────────────────────────────────────────────────────────────────
+
+    def _timer(self, p: ParsedCommand) -> str:
+        """
+        timer <duree> [message] [--beeps n]
+        timer status
+        timer cancel <id>
+        timer ?
+        """
+        from aion.services.timer_service import TimerService, _fmt_duration
+
+        action = p.action
+
+        if not action or action == "?":
+            return get_domain_help("timer")
+
+        # timer status — lister les timers actifs
+        if action == "status":
+            timers = TimerService.list_timers()
+            if not timers:
+                return "timer : aucun timer actif."
+            lines = ["Timers actifs :"]
+            for tid, info in timers.items():
+                rem = info.get("remaining", 0)
+                msg = info.get("message", "")
+                lines.append(
+                    f"  {tid} : {_fmt_duration(rem)} restant(s) — {msg}"
+                )
+            return "\n".join(lines)
+
+        # timer cancel <id>
+        if action == "cancel":
+            tid = p.args[0] if p.args else ""
+            if not tid:
+                return "Format : timer cancel <id>  (voir timer status)"
+            if TimerService.cancel_timer(tid):
+                return f"timer : {tid} annule."
+            return f"timer : {tid} introuvable."
+
+        # timer <duree> [message] [--beeps n]
+        # La "duree" EST l'action (ex: timer 5m)
+        duration_raw = action
+        # Message = args joints
+        message  = " ".join(p.args).strip() if p.args else "Temps ecoule !"
+        # Surcharge via --message
+        if "message" in p.params:
+            message = p.params["message"]
+        beeps = int(p.params.get("beeps", 3))
+
+        payload = {
+            "duration": duration_raw,
+            "message":  message,
+            "beeps":    beeps,
+        }
+        return self._executor.execute("timer", payload)
 
     def all_shortcuts(self) -> str:
         """Retourne un resume de tous les raccourcis disponibles."""

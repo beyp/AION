@@ -210,6 +210,13 @@ async def section_fs_search(request: Request):
     )
 
 
+@app.get("/section/timer", response_class=HTMLResponse)
+async def section_timer(request: Request):
+    return templates.TemplateResponse(
+        request=request, name="sections/timer.html", context={},
+    )
+
+
 @app.get("/section/help", response_class=HTMLResponse)
 async def section_help(request: Request):
     from aion.core.help_builder import build_help_html
