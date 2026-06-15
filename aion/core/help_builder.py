@@ -62,7 +62,20 @@ STATIC_COMMANDS: list[tuple[str, str, str]] = [
     ("API",     "api start",                      "Demarrer le serveur API (port 8000)"),
     ("API",     "  -> Dashboard",                 "http://127.0.0.1:8000/dashboard"),
     ("API",     "  -> Swagger",                   "http://127.0.0.1:8000/docs"),
-]
+    # ── ADO (Azur DevOps)──────────────────────────────────────────────────────
+    ("ADO",  "ado get item <id>",             "Voir un work item"),
+    ("ADO",  "ado status change <id> <etat>", "Changer le statut"),
+    ("ADO",  "ado list [--state <etat>]",     "Lister les items"),
+    # ── NET (Network)──────────────────────────────────────────────────────
+    ("NET",  "net status",                    "Statut reseau complet"),
+    # ── SYS (System)──────────────────────────────────────────────────────
+    ("SYS",  "sys cpu / disk / uptime",       "Monitoring systeme"),
+    # ── FS0 (File Search)──────────────────────────────────────────────────────
+    ("FS",   "fs search <mots> --key <cle>",  "Rechercher des fichiers"),
+    ("FS",   "fs open/edit <n>",              "Ouvrir le fichier #n"),
+    # ── QM (QuickMind)──────────────────────────────────────────────────────
+    ("QM",   "qm add/list/done",              "Gestion QuickMind"),
+    ]
 
 
 def build_help(registry: "ServiceRegistry | None" = None) -> str:
