@@ -192,12 +192,17 @@ async def section_ado(request: Request):
 
 @app.get("/section/fs_search", response_class=HTMLResponse)
 async def section_fs_search(request: Request):
-    # Passer les cles memoire de type path directement via Jinja2
-    path_items = memory.list_memory(memory_type="path")
-    path_keys  = [
+    # Recharger la memoire depuis le disque a chaque appel
+    # pour prendre en compte les nouvelles cles ajoutees depuis la console
+    from aion.memory.memory_manager import MemoryManager
+    fresh_memory = MemoryManager()
+    path_items   = fresh_memory.list_memory(memory_type="path")
+    path_keys    = [
         {"key": k, "value": v.get("value", "")}
         for k, v in path_items.items()
     ]
+    logger.info("fs_search: %d cle(s) path trouvee(s): %s",
+                len(path_keys), [p["key"] for p in path_keys])
     return templates.TemplateResponse(
         request=request,
         name="sections/fs_search.html",

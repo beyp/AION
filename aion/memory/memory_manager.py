@@ -12,8 +12,14 @@ class MemoryManager:
     Temporary memory lives only during the current AION session.
     """
 
-    def __init__(self, memory_file: str = "aion/memory/memory.json") -> None:
-        self.memory_file = Path(memory_file)
+    # Chemin absolu par defaut — fonctionne peu importe le repertoire courant
+    _DEFAULT_MEMORY_FILE = Path(__file__).parent / "memory.json"
+
+    def __init__(self, memory_file: str | None = None) -> None:
+        if memory_file is None:
+            self.memory_file = self._DEFAULT_MEMORY_FILE
+        else:
+            self.memory_file = Path(memory_file)
         self.temporary_memory: dict[str, Any] = {}
         self.persistent_memory = self.load()
 
