@@ -23,7 +23,11 @@ templates     = Jinja2Templates(directory=str(TEMPLATES_DIR))
 
 registry  = ServiceRegistry()
 executor  = ServiceExecutor(registry)
-memory    = MemoryManager()
+# Ne pas instancier memory globalement — recharger depuis disque a chaque requete
+# pour rester synchronise avec la console standard AION
+def fresh_mem() -> MemoryManager:
+    """Retourne une instance fraiche de MemoryManager (lit memory.json)."""
+    return MemoryManager()
 scheduler = AionScheduler()
 config    = ConfigLoader().load()
 
@@ -71,7 +75,7 @@ async def dashboard(request: Request):
 
 @app.get("/section/status", response_class=HTMLResponse)
 async def section_status(request: Request):
-    mem_stats = memory.stats()
+    mem_stats = fresh_mem().stats()
     jobs = scheduler.list_jobs()
     jobs_with_state = {
         jid: {**info, "state": scheduler.get_job_state(jid)}
@@ -135,8 +139,8 @@ async def section_memory(request: Request):
         request=request,
         name="sections/memory.html",
         context={
-            "items":        memory.list_memory(),
-            "memory_stats": memory.stats(),
+            "items":        fresh_mem().list_memory(),
+            "memory_stats": fresh_mem().stats(),
         },
     )
 
@@ -300,7 +304,7 @@ def _handle_console_command(cmd: str) -> str:
         return "\n".join(f"  - {s.name}: {s.description}" for s in svcs)
 
     if cmd == "status":
-        stats = memory.stats()
+        stats = fresh_mem().stats()
         return (
             f"Version   : {config.get('app', {}).get('version', '?')}\n"
             f"Services  : {registry.count()}\n"
@@ -321,7 +325,7 @@ def _handle_console_command(cmd: str) -> str:
         return "\n".join(lines)
 
     if cmd == "memory":
-        items = memory.list_memory()
+        items = fresh_mem().list_memory()
         if not items:
             return "Memoire vide."
         return "\n".join(
@@ -332,12 +336,12 @@ def _handle_console_command(cmd: str) -> str:
     if cmd.startswith("remember ") and "=" in cmd:
         raw = cmd.replace("remember ", "", 1)
         key, val = raw.split("=", 1)
-        memory.remember(key.strip(), val.strip())
+        fresh_mem().remember(key.strip(), val.strip())
         return f"Memorise : {key.strip()}"
 
     if cmd.startswith("recall "):
         key = cmd.replace("recall ", "", 1).strip()
-        val = memory.recall(key)
+        val = fresh_mem().recall(key)
         return f"{key} = {val}" if val else f"Aucune memoire pour : {key}"
 
     if cmd.startswith("schedule ") and " every " in cmd:
@@ -747,7 +751,7 @@ async def remove_job(job_id: str):
 @app.get("/api/memory/paths")
 async def get_memory_paths():
     """Retourne les cles memoire de type path pour l autocompletion."""
-    items = memory.list_memory(memory_type="path")
+    items = fresh_mem().list_memory(memory_type="path")
     result = []
     for key, item in items.items():
         result.append({
