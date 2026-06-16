@@ -199,8 +199,7 @@ async def section_fs_search(request: Request):
     # Recharger la memoire depuis le disque a chaque appel
     # pour prendre en compte les nouvelles cles ajoutees depuis la console
     from aion.memory.memory_manager import MemoryManager
-    fresh_memory = MemoryManager()
-    path_items   = fresh_memory.list_memory(memory_type="path")
+    path_items = fresh_mem().list_memory(memory_type="path")
     path_keys    = [
         {"key": k, "value": v.get("value", "")}
         for k, v in path_items.items()
@@ -276,7 +275,7 @@ def _handle_console_command(cmd: str) -> str:
     """Traite une commande console — domain router + commandes core."""
 
     # ── 1. Domain Router ──────────────────────────────────────────────────────
-    dr = DomainRouter(executor, memory)
+    dr = DomainRouter(executor, fresh_mem())
     if dr.can_handle(cmd):
         result = dr.dispatch(cmd)
         if result is not None:
