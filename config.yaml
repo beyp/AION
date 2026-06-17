@@ -1,6 +1,6 @@
 app:
   name: AION
-  version: "0.7.0"
+  version: "0.7.2"
   environment: local
 
 logging:
@@ -25,6 +25,21 @@ notifications:
   duration_seconds: 5
 
 ai:
+  # backend : auto | groq | ollama
+  # auto = Groq si GROQ_API_KEY present, sinon Ollama
+  backend: auto
+
+  # Groq (gratuit, ultra-rapide)
+  # Cle API : https://console.groq.com → Create API Key
+  # Stocker dans .env : GROQ_API_KEY=gsk_...
+  groq_model: llama-3.3-70b-versatile
+  # Autres modeles Groq disponibles :
+  #   llama3-70b-8192       (plus puissant)
+  #   mixtral-8x7b-32768    (contexte long)
+  #   llama-3.1-8b-instant  (le plus rapide)
+
+  # Ollama local (fallback)
   ollama_url: http://localhost:11434
-  model: mistral:latest
-  timeout: 300
+  ollama_model: mistral:latest
+
+  timeout: 30

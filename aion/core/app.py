@@ -2,7 +2,7 @@
 from pathlib import Path
 
 from aion.ai.aion_agent import AionAgent
-from aion.ai.ollama_client import OllamaClient
+from aion.ai.ai_client import AiClient
 from aion.core.command_parser import get_domain_help
 from aion.core.config_loader import ConfigLoader
 from aion.core.domain_router import DomainRouter
@@ -51,6 +51,13 @@ class AionApp:
     AION_VERSION = AION_VERSION
 
     def __init__(self) -> None:
+        # Charger .env automatiquement
+        try:
+            from dotenv import load_dotenv
+            load_dotenv()
+        except ImportError:
+            pass  # python-dotenv optionnel
+
         self.config = ConfigLoader().load()
 
         logging_config = self.config.get("logging", {})
@@ -74,13 +81,16 @@ class AionApp:
         # Domain Router — commandes naturelles
         self.domain_router = DomainRouter(self.executor, self.memory)
 
-        ai_config = self.config.get("ai", {})
-        self._ollama = OllamaClient(
-            base_url=ai_config.get("ollama_url", "http://localhost:11434"),
-            model=ai_config.get("model", "mistral:latest"),
-            timeout=ai_config.get("timeout", 60),
+        ai_config     = self.config.get("ai", {})
+        import os
+        self._ollama  = AiClient(
+            backend    = ai_config.get("backend", "auto"),
+            groq_key   = os.getenv("GROQ_API_KEY", ""),
+            ollama_url = ai_config.get("ollama_url", "http://localhost:11434"),
+            model      = ai_config.get("groq_model", "llama3-8b-8192"),
+            timeout    = int(ai_config.get("timeout", 30)),
         )
-        self._agent  = AionAgent(self, self._ollama)
+        self._agent   = AionAgent(self, self._ollama)
         self._ai_mode = False
 
         self._register_event_hooks()
@@ -482,12 +492,21 @@ class AionApp:
         )
 
     def _ai_status(self) -> str:
+        info      = self._ollama.status_info()
         available = self._ollama.is_available()
         models    = self._ollama.list_models() if available else []
+        backend   = info.get("backend", "none")
+        backend_label = {"groq": "Groq (cloud)", "ollama": "Ollama (local)", "none": "Aucun"}.get(backend, backend)
+        groq_key_ok = "✅ configuree" if info.get("groq_key") else "❌ non configuree"
+
         return (
-            f"Ollama : {'Connecte' if available else 'Non disponible'}\n"
-            f"Modele : {self._ollama.model}\n"
-            f"Modeles: {', '.join(models) if models else 'aucun'}"
+            f"Backend  : {backend_label}\n"
+            f"Statut   : {'Connecte' if available else 'Non disponible'}\n"
+            f"Modele   : {self._ollama.model}\n"
+            f"Groq Key : {groq_key_ok}\n"
+            f"Ollama   : {info.get('ollama_url', '?')}\n"
+            f"Modeles  : {chr(10).join(f'  - {m}' for m in models[:5]) if models else 'aucun'}\n"
+            f"Mode IA  : {'actif' if self._ai_mode else 'inactif (tape ai)'}"
         )
 
     def _ai_set_model(self, model_name: str) -> str:
@@ -497,13 +516,18 @@ class AionApp:
 
     def _ai_list_models(self) -> str:
         if not self._ollama.is_available():
-            return "Ollama non disponible."
+            return (
+                "Aucun backend IA disponible.\n"
+                "  Groq  : ajoute GROQ_API_KEY dans .env\n"
+                "  Ollama: ollama serve"
+            )
         models = self._ollama.list_models()
         if not models:
-            return "Aucun modele. Essaie : ollama pull mistral"
-        lines = ["Modeles Ollama :"]
-        for m in models:
-            marker = " <- actif" if m.startswith(self._ollama.model) else ""
+            return "Aucun modele disponible."
+        backend = self._ollama.backend
+        lines   = [f"Modeles {backend} disponibles :"]
+        for m in models[:10]:
+            marker = " <- actif" if self._ollama.model in m else ""
             lines.append(f"  - {m}{marker}")
         return "\n".join(lines)
 
@@ -512,7 +536,7 @@ class AionApp:
     def _status(self) -> str:
         stats       = self.memory.stats()
         sched_state = "Running" if self.scheduler.is_running() else "Stopped"
-        ai_state    = "Connecte" if self._ollama.is_available() else "Non disponible"
+        ai_state    = ("Connecte (%s)" % self._ollama.backend) if self._ollama.is_available() else "Non disponible"
         return (
             f"AION Status\n\n"
             f"Version       : {AION_VERSION}\n"
@@ -521,7 +545,7 @@ class AionApp:
             f"Memory        : {stats['total']} items\n"
             f"Scheduler     : {sched_state} ({self.scheduler.job_count()} jobs)\n"
             f"Notifications : {'ON' if self.notifier.enabled else 'OFF'}\n"
-            f"Ollama        : {ai_state} | {self._ollama.model}\n"
+            f"IA            : {ai_state} | {self._ollama.backend} | {self._ollama.model}\n"
             f"Dashboard     : http://127.0.0.1:8000/dashboard"
         )
 
