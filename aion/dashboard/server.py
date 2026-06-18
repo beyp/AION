@@ -760,6 +760,152 @@ async def get_memory_paths():
     return result
 
 
+@app.post("/api/voice")
+async def voice_endpoint(request: Request):
+    """
+    Point d entree pour les raccourcis iPhone / Siri.
+    Body : { "text": "commande vocale", "lang": "fr" }
+    Retour: { "response": "texte lisible par Siri", "action": "...", "ok": true }
+    """
+    import os, json as _json
+
+    body = await request.json()
+    text = body.get("text", "").strip()
+
+    if not text:
+        return {"response": "Je n ai rien compris. Repetez s il vous plait.", "ok": False}
+
+    groq_key = os.getenv("GROQ_API_KEY", "")
+    if not groq_key:
+        return {"response": "Cle Groq non configuree dans AION.", "ok": False}
+
+    SYSTEM = """Tu es AION, un assistant vocal pour la gestion de projet.
+Tu recois des commandes vocales en francais et tu retournes un JSON :
+{
+  "action": "nom_service_ou_question",
+  "params": {},
+  "voice_response": "reponse courte a lire (max 2 phrases)"
+}
+
+Services disponibles :
+- net_myip         → IP publique
+- net_status       → statut reseau complet
+- net_ping         → ping 8.8.8.8
+- sys_cpu          → CPU et RAM
+- sys_disk         → disques
+- sys_uptime       → uptime machine
+- qm_add_task      → params: {title, priority: urgent/high/normal/low, category}
+- qm_list_tasks    → lister taches QuickMind
+- qm_health        → QuickMind actif ?
+- ado_search_items → params: {state, type, assigned: "@me"}
+- ado_get_item     → params: {item_id: 12345}
+- timer            → params: {duration: "25m", message: "..."}
+- question         → repondre sans service
+
+Exemples :
+"IP public" → {"action":"net_myip","params":{},"voice_response":"Je verifie votre IP."}
+"Ajoute RDV demain 14h urgent" → {"action":"qm_add_task","params":{"title":"RDV demain 14h","priority":"urgent"},"voice_response":"J ajoute RDV demain 14h en urgente."}
+"Mes taches ADO en cours" → {"action":"ado_search_items","params":{"state":"In Progress","assigned":"@me"},"voice_response":"Je cherche vos items en cours."}
+"Timer 25 minutes" → {"action":"timer","params":{"duration":"25m","message":"Pause terminee !"},"voice_response":"Timer 25 minutes lance."}
+Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres."""
+
+    import requests as req
+    try:
+        r = req.post(
+            "https://api.groq.com/openai/v1/chat/completions",
+            headers={"Authorization": f"Bearer {groq_key}", "Content-Type": "application/json"},
+            json={
+                "model":    "llama-3.3-70b-versatile",
+                "messages": [
+                    {"role": "system", "content": SYSTEM},
+                    {"role": "user",   "content": text},
+                ],
+                "temperature": 0.2,
+                "max_tokens":  256,
+            },
+            timeout=15,
+        )
+        r.raise_for_status()
+        raw = r.json()["choices"][0]["message"]["content"].strip()
+        if "```" in raw:
+            raw = raw.split("```")[1].strip()
+            if raw.startswith("json"):
+                raw = raw[4:].strip()
+        ai = _json.loads(raw)
+    except Exception as e:
+        return {"response": f"Erreur IA: {str(e)[:80]}", "ok": False}
+
+    action     = ai.get("action", "question")
+    params     = ai.get("params", {})
+    voice_resp = ai.get("voice_response", "")
+    svc_result = None
+
+    # Services sans traitement spécial
+    SIMPLE_SERVICES = {
+        "net_myip", "net_status", "net_ping",
+        "sys_cpu", "sys_disk", "sys_uptime", "sys_info",
+        "docker_status", "qm_health", "qm_list_tasks",
+    }
+
+    if action in SIMPLE_SERVICES:
+        try:
+            svc_result = executor.execute(action, params or {})
+            # Résumé vocal : 3 premières lignes non vides
+            if svc_result:
+                lines = [l.strip() for l in svc_result.splitlines() if l.strip()][:3]
+                voice_resp = voice_resp + " " + " — ".join(lines)
+        except Exception as e:
+            voice_resp = f"Service indisponible: {str(e)[:60]}"
+
+    elif action == "qm_add_task":
+        try:
+            svc_result = executor.execute("qm_add_task", params)
+            if svc_result and "erreur" not in svc_result.lower():
+                voice_resp = voice_resp
+            else:
+                voice_resp = "QuickMind n est pas disponible en ce moment."
+        except Exception:
+            voice_resp = "Impossible de creer la tache. QuickMind actif ?"
+
+    elif action == "ado_search_items":
+        try:
+            svc_result = executor.execute("ado_search_items", params)
+            if svc_result:
+                items = [l.strip() for l in svc_result.splitlines()
+                         if l.strip() and "#" in l][:3]
+                if items:
+                    voice_resp = f"J ai trouve {len(items)} item(s) : " + ", ".join(
+                        i.split("]")[-1].strip()[:30] for i in items
+                    )
+                else:
+                    voice_resp = "Aucun item trouve avec ces criteres."
+        except Exception as e:
+            voice_resp = f"Erreur ADO: {str(e)[:60]}"
+
+    elif action == "ado_get_item":
+        try:
+            svc_result = executor.execute("ado_get_item", params)
+            if svc_result:
+                lines = [l.strip() for l in svc_result.splitlines() if l.strip()][:4]
+                voice_resp = " — ".join(lines)
+        except Exception as e:
+            voice_resp = f"Erreur ADO: {str(e)[:60]}"
+
+    elif action == "timer":
+        try:
+            svc_result = executor.execute("timer", params)
+        except Exception:
+            voice_resp = "Impossible de lancer le timer."
+
+    return {
+        "response": voice_resp.strip(),
+        "action":   action,
+        "params":   params,
+        "result":   svc_result,
+        "ok":       True,
+    }
+
+
 @app.post("/services/reload", response_class=HTMLResponse)
 async def reload_services():
     registry.reload_services()
