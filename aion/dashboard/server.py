@@ -773,6 +773,233 @@ async def get_memory_paths():
     return result
 
 
+# ── Voice results store — stockage temporaire des pages de résultats ────────
+import time, uuid, html as _html
+_VOICE_RESULTS: dict[str, dict] = {}  # {uid: {data, expires_at, query}}
+_VOICE_RESULT_TTL = 300  # 5 minutes
+
+def _cleanup_voice_results():
+    """Supprime les résultats expirés."""
+    now = time.time()
+    expired = [k for k, v in _VOICE_RESULTS.items() if v.get("expires_at", 0) < now]
+    for k in expired:
+        del _VOICE_RESULTS[k]
+
+def _store_voice_result(query: str, action: str, voice_response: str,
+                        service_result: str | None, params: dict) -> str:
+    """Stocke un résultat vocal et retourne son UID."""
+    _cleanup_voice_results()
+    uid = str(uuid.uuid4())[:8]
+    _VOICE_RESULTS[uid] = {
+        "query":          query,
+        "action":         action,
+        "voice_response": voice_response,
+        "service_result": service_result or "",
+        "params":         params,
+        "created_at":     time.time(),
+        "expires_at":     time.time() + _VOICE_RESULT_TTL,
+    }
+    return uid
+
+
+def _build_result_html(uid: str, data: dict, base_url: str) -> str:
+    """Génère la page HTML de résultat pour l iPhone."""
+    query          = _html.escape(data.get("query", ""))
+    action         = _html.escape(data.get("action", ""))
+    voice_response = _html.escape(data.get("voice_response", ""))
+    service_result = data.get("service_result", "")
+    params         = data.get("params", {})
+    created        = time.strftime("%H:%M:%S", time.localtime(data.get("created_at", 0)))
+    expires_in     = max(0, int(data.get("expires_at", 0) - time.time()))
+
+    # Formatter le résultat de service selon l action
+    result_html = ""
+    if service_result:
+        lines = service_result.splitlines()
+        if action == "search_all":
+            # Résultats de recherche universelle ADO + QM
+            ado_section = ""
+            qm_section  = ""
+            current = "ado"
+            ado_items = []
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    if ado_items:
+                        current = "qm"
+                    continue
+                if current == "ado" and "#" in line:
+                    import re as _re
+                    m = _re.search(r'#(\d+)', line)
+                    if m:
+                        ado_id  = m.group(1)
+                        project = params.get("project","PTG - TMM D2").replace(" ","%20")
+                        url     = f"https://dev.azure.com/Premiertech/{project}/_workitems/edit/{ado_id}"
+                        ado_items.append(
+                            f'<a href="{url}" class="item-card">'
+                            f'<span class="item-id">#{ado_id}</span>'
+                            f'<span class="item-text">{_html.escape(line)}</span>'
+                            f'<span class="item-arrow">&#x279C;</span></a>'
+                        )
+                elif current == "qm":
+                    qm_section += f'<div class="item-card">{_html.escape(line)}</div>'
+            if ado_items:
+                ado_section = "<h3 style='color:#0078d4;font-size:0.82rem;margin:10px 0 6px;'>&#x1F535; Azure DevOps</h3>" + "".join(ado_items)
+            if qm_section:
+                qm_section = "<h3 style='color:#4caf50;font-size:0.82rem;margin:10px 0 6px;'>&#x2705; QuickMind</h3>" + qm_section
+            result_html = ado_section + qm_section or f'<div class="info-line">Aucun résultat.</div>'
+        elif action in ("ado_search_items", "ado_get_item"):
+            # Résultat ADO — formatter en cards
+            cards = []
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                if "#" in line and ("[" in line or "→" in line):
+                    # Ligne item ADO
+                    ado_url = ""
+                    ado_id  = ""
+                    import re
+                    m = re.search(r'#(\d+)', line)
+                    if m:
+                        ado_id  = m.group(1)
+                        project = params.get("project", "PTG - TMM D2").replace(" ", "%20")
+                        ado_url = f"https://dev.azure.com/Premiertech/{project}/_workitems/edit/{ado_id}"
+                    clean = _html.escape(line)
+                    if ado_url:
+                        cards.append(
+                            f'<a href="{ado_url}" class="item-card">'
+                            f'<span class="item-id">#{ado_id}</span>'
+                            f'<span class="item-text">{clean}</span>'
+                            f'<span class="item-arrow">&#x279C;</span>'
+                            f'</a>'
+                        )
+                    else:
+                        cards.append(f'<div class="info-line">{clean}</div>')
+                else:
+                    cards.append(f'<div class="info-line">{_html.escape(line)}</div>')
+            result_html = "
+".join(cards)
+        elif action in ("qm_list_tasks",):
+            # Tâches QuickMind
+            cards = []
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                prio_color = "#f44336" if "urgent" in line.lower() else                              "#ff9800" if "high" in line.lower() else "#1e90ff"
+                cards.append(
+                    f'<div class="item-card" style="border-left:3px solid {prio_color};">'
+                    f'{_html.escape(line)}</div>'
+                )
+            result_html = "
+".join(cards)
+        else:
+            # Résultat générique — préformaté
+            result_html = f'<pre class="result-pre">{_html.escape(service_result)}</pre>'
+
+    # Action badge color
+    action_colors = {
+        "ado_search_items": "#0078d4", "ado_get_item": "#0078d4",
+        "qm_add_task": "#4caf50", "qm_list_tasks": "#4caf50",
+        "net_myip": "#1e90ff", "net_status": "#1e90ff",
+        "sys_cpu": "#9c27b0", "sys_disk": "#9c27b0",
+        "timer": "#ff9800",
+    }
+    action_color = action_colors.get(action, "#888")
+
+    return f"""<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0">
+<meta http-equiv="refresh" content="{expires_in}">
+<title>AION — {query[:30]}</title>
+<style>
+*{{box-sizing:border-box;margin:0;padding:0;}}
+body{{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;
+  background:#0f1117;color:#e0e0e0;min-height:100vh;}}
+.header{{background:#151821;border-bottom:2px solid #1e90ff;
+  padding:14px 16px;display:flex;align-items:center;gap:10px;}}
+.header h1{{color:#1e90ff;font-size:1.1rem;}}
+.badge{{background:{action_color}22;color:{action_color};border:1px solid {action_color}44;
+  padding:3px 10px;border-radius:12px;font-size:0.72rem;font-weight:600;}}
+.query{{background:#1a1d27;border-left:3px solid #1e90ff;
+  padding:12px 16px;margin:12px;border-radius:0 8px 8px 0;
+  font-size:0.9rem;color:#ccc;font-style:italic;}}
+.voice-response{{background:#1a1d27;border-radius:10px;padding:14px 16px;
+  margin:0 12px 12px;font-size:1rem;line-height:1.5;}}
+.voice-response .icon{{font-size:1.3rem;margin-right:8px;}}
+.results{{padding:0 12px 20px;}}
+.results h2{{font-size:0.78rem;text-transform:uppercase;letter-spacing:1px;
+  color:#888;margin-bottom:10px;}}
+.item-card{{display:flex;align-items:center;gap:10px;
+  background:#1a1d27;border-radius:8px;padding:12px 14px;
+  margin-bottom:8px;text-decoration:none;color:#e0e0e0;
+  border:1px solid #2a2d3e;}}
+.item-card:active{{background:#2a2d3e;}}
+.item-id{{color:#1e90ff;font-weight:700;font-size:0.82rem;min-width:50px;flex-shrink:0;}}
+.item-text{{flex:1;font-size:0.85rem;}}
+.item-arrow{{color:#888;font-size:0.9rem;flex-shrink:0;}}
+.info-line{{background:#1a1d27;border-radius:6px;padding:8px 12px;
+  margin-bottom:6px;font-size:0.85rem;color:#ccc;}}
+.result-pre{{background:#0a0c14;border-radius:8px;padding:14px;
+  font-family:"Cascadia Code",Consolas,monospace;font-size:0.78rem;
+  color:#4caf50;white-space:pre-wrap;overflow-x:auto;}}
+.footer{{text-align:center;padding:16px;color:#444;font-size:0.72rem;}}
+.refresh-btn{{display:block;text-align:center;background:#1a1d27;
+  border:1px solid #2a2d3e;color:#888;padding:10px;margin:0 12px 12px;
+  border-radius:8px;text-decoration:none;font-size:0.85rem;}}
+.refresh-btn:active{{background:#2a2d3e;}}
+.expires{{color:#555;font-size:0.7rem;text-align:center;padding:4px;}}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <span style="font-size:1.4rem;">&#x1F916;</span>
+  <h1>AION</h1>
+  <span class="badge">{action}</span>
+  <span style="margin-left:auto;color:#555;font-size:0.72rem;">{created}</span>
+</div>
+
+<div class="query">&#x201C;{query}&#x201D;</div>
+
+<div class="voice-response">
+  <span class="icon">&#x1F50A;</span>{voice_response}
+</div>
+
+{"<div class='results'><h2>Resultats</h2>" + result_html + "</div>" if result_html else ""}
+
+<a href="{base_url}/voice/result/{uid}" class="refresh-btn">&#x21BA; Rafraichir</a>
+
+<div class="expires">Page disponible encore {expires_in}s &mdash; expire automatiquement</div>
+
+<div class="footer">AION Dashboard &mdash; {base_url}</div>
+
+</body>
+</html>"""
+
+
+@app.get("/voice/result/{uid}", response_class=HTMLResponse)
+async def voice_result_page(uid: str, request: Request):
+    """Page de résultat vocal — ouverte automatiquement sur l iPhone."""
+    _cleanup_voice_results()
+    data = _VOICE_RESULTS.get(uid)
+    if not data:
+        return HTMLResponse(
+            "<html><body style='background:#0f1117;color:#e0e0e0;font-family:sans-serif;"
+            "display:flex;align-items:center;justify-content:center;height:100vh;'>"
+            "<div style='text-align:center;'><h2 style='color:#f44336;'>Page expirée</h2>"
+            "<p style='color:#888;margin-top:10px;'>Ce résultat a expiré (5 min max).</p>"
+            "<p style='color:#888;margin-top:6px;'>Relancez une commande vocale.</p>"
+            "</div></body></html>",
+            status_code=410
+        )
+    base_url = str(request.base_url).rstrip("/")
+    return HTMLResponse(_build_result_html(uid, data, base_url))
+
+
 @app.post("/api/voice")
 async def voice_endpoint(request: Request):
     """
@@ -792,6 +1019,37 @@ async def voice_endpoint(request: Request):
     if not groq_key:
         return {"response": "Cle Groq non configuree dans AION.", "ok": False}
 
+    # Normaliser le texte avant envoi à Groq
+    # Corriger les erreurs courantes de reconnaissance vocale
+    VOICE_ALIASES = {
+        # ADO / Azure DevOps
+        "ado":          "ADO",
+        "azure":        "ADO",
+        "azure devo":   "ADO",
+        "azure devops": "ADO",
+        "azur":         "ADO",
+        "azur devops":  "ADO",
+        "a d o":        "ADO",
+        "ado items":    "ADO items",
+        "devops":       "ADO",
+        # Commandes courantes
+        "mes tâches":   "mes taches",
+        "mes tache":    "mes taches",
+        "mes tasks":    "mes taches",
+        "quickmind":    "QuickMind",
+        "quick mind":   "QuickMind",
+        "timer":        "timer",
+        "minuteur":     "timer",
+        "compte à rebours": "timer",
+        "pomodoro":     "timer 25 minutes",
+    }
+    text_lower = text.lower()
+    for alias, replacement in VOICE_ALIASES.items():
+        if alias in text_lower:
+            text = text.replace(alias, replacement)
+            text = text.replace(alias.title(), replacement)
+            break
+
     SYSTEM = """Tu es AION, un assistant vocal pour la gestion de projet.
 Tu recois des commandes vocales en francais et tu retournes un JSON :
 {
@@ -810,15 +1068,23 @@ Services disponibles :
 - qm_add_task      → params: {title, priority: urgent/high/normal/low, category}
 - qm_list_tasks    → lister taches QuickMind
 - qm_health        → QuickMind actif ?
-- ado_search_items → params: {state, type, assigned: "@me"}
+- ado_search_items → params: {state, type, assigned: "@me", project: "PTG - TMM D2"}
 - ado_get_item     → params: {item_id: 12345}
 - timer            → params: {duration: "25m", message: "..."}
+- search_all       → recherche simultanee dans ADO + QuickMind, params: {keyword: "mot"}
 - question         → repondre sans service
+
+IMPORTANT - Regle de recherche universelle :
+Si l utilisateur demande de "chercher", "trouver", "y a-t-il", "recherche",
+ou donne un mot-cle sans preciser la source → utiliser search_all.
+search_all cherche automatiquement dans ADO ET QuickMind.
 
 Exemples :
 "IP public" → {"action":"net_myip","params":{},"voice_response":"Je verifie votre IP."}
 "Ajoute RDV demain 14h urgent" → {"action":"qm_add_task","params":{"title":"RDV demain 14h","priority":"urgent"},"voice_response":"J ajoute RDV demain 14h en urgente."}
-"Mes taches ADO en cours" → {"action":"ado_search_items","params":{"state":"In Progress","assigned":"@me"},"voice_response":"Je cherche vos items en cours."}
+"Mes items en cours" ou "mes tickets" ou "mon backlog" → {"action":"ado_search_items","params":{"assigned":"@me"},"voice_response":"Je cherche vos items."}
+"mes bugs" → {"action":"ado_search_items","params":{"type":"Bug","state":"Active"},"voice_response":"Je cherche vos bugs actifs."}
+"cherche formation" ou "y a-t-il quelque chose sur formation" → {"action":"search_all","params":{"keyword":"formation"},"voice_response":"Je recherche formation dans ADO et QuickMind."}
 "Timer 25 minutes" → {"action":"timer","params":{"duration":"25m","message":"Pause terminee !"},"voice_response":"Timer 25 minutes lance."}
 Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres."""
 
@@ -910,12 +1176,69 @@ Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres."""
         except Exception:
             voice_resp = "Impossible de lancer le timer."
 
+    elif action == "search_all":
+        # Recherche simultanée ADO + QuickMind
+        keyword  = params.get("keyword", text)
+        results  = []
+        ado_res  = ""
+        qm_res   = ""
+
+        # 1. Recherche ADO
+        try:
+            ado_params = {"title_contains": keyword, "limit": 5,
+                          "project": params.get("project", "PTG - TMM D2")}
+            ado_res    = executor.execute("ado_search_items", ado_params)
+            ado_lines  = [l.strip() for l in (ado_res or "").splitlines()
+                          if l.strip() and "#" in l]
+            if ado_lines:
+                results.append(f"ADO ({len(ado_lines)}): " + ado_lines[0][:50])
+        except Exception:
+            pass
+
+        # 2. Recherche QuickMind
+        try:
+            import requests as _req
+            qm_r = _req.get("http://localhost:8765/tasks", timeout=3)
+            if qm_r.status_code == 200:
+                tasks = qm_r.json()
+                kw_low = keyword.lower()
+                matching = [t for t in tasks
+                            if kw_low in (t.get("title","") or "").lower()
+                            or kw_low in (t.get("description","") or "").lower()]
+                qm_res = f"{len(matching)} tâche(s) QuickMind"
+                if matching:
+                    results.append(f"QM ({len(matching)}): " + matching[0].get("title","")[:50])
+        except Exception:
+            pass
+
+        if results:
+            voice_resp  = f"J'ai trouvé des résultats pour '{keyword}'. " + " — ".join(results)
+            svc_result  = (ado_res or "") + "
+
+" + (qm_res or "")
+        else:
+            voice_resp  = f"Aucun résultat trouvé pour '{keyword}' dans ADO ni QuickMind."
+            svc_result  = ""
+
+    # Stocker le résultat et générer l URL de la page de détail
+    result_uid = _store_voice_result(
+        query          = text,
+        action         = action,
+        voice_response = voice_resp.strip(),
+        service_result = svc_result,
+        params         = params,
+    )
+    base_url   = str(request.base_url).rstrip("/")
+    result_url = f"{base_url}/voice/result/{result_uid}"
+
     return {
-        "response": voice_resp.strip(),
-        "action":   action,
-        "params":   params,
-        "result":   svc_result,
-        "ok":       True,
+        "response":   voice_resp.strip(),
+        "action":     action,
+        "params":     params,
+        "result":     svc_result,
+        "url":        result_url,
+        "result_uid": result_uid,
+        "ok":         True,
     }
 
 
