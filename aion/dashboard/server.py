@@ -1,8 +1,21 @@
 """Dashboard AION v2 - Sidebar + Console + Domain Router."""
 import logging
+import os
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any
+
+# Charger le .env pour GROQ_API_KEY, ADO_PAT etc.
+try:
+    from dotenv import load_dotenv
+    # Chercher le .env dans le répertoire du projet AION
+    _env_path = Path(__file__).parent.parent.parent / ".env"
+    if _env_path.exists():
+        load_dotenv(_env_path)
+    else:
+        load_dotenv()  # chercher dans le répertoire courant
+except ImportError:
+    pass  # python-dotenv optionnel
 
 from fastapi import FastAPI, Request, Form
 from fastapi.middleware.cors import CORSMiddleware
