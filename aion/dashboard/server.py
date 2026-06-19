@@ -1228,8 +1228,28 @@ Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres."""
         service_result = svc_result,
         params         = params,
     )
-    base_url   = str(request.base_url).rstrip("/")
-    result_url = f"{base_url}/voice/result/{result_uid}"
+    # Déterminer la meilleure URL pour l iPhone
+    # Priorité : 1. IP mémorisée dans AION 2. Host de la requête 3. request.base_url
+    _aion_ip = None
+    try:
+        _mem = memory.recall("aion_public_url") or memory.recall("tailscale_ip")
+        if _mem:
+            _aion_ip = _mem.strip().rstrip("/")
+            if not _aion_ip.startswith("http"):
+                _aion_ip = f"http://{_aion_ip}:8000"
+    except Exception:
+        pass
+
+    if not _aion_ip:
+        # Utiliser le host de la requête (correct si appelé via Tailscale/réseau)
+        req_host = request.headers.get("host", "")
+        if req_host and not req_host.startswith("127") and not req_host.startswith("localhost"):
+            scheme   = "https" if request.url.scheme == "https" else "http"
+            _aion_ip = f"{scheme}://{req_host}"
+        else:
+            _aion_ip = str(request.base_url).rstrip("/")
+
+    result_url = f"{_aion_ip}/voice/result/{result_uid}"
 
     return {
         "response":   voice_resp.strip(),
@@ -1239,6 +1259,29 @@ Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres."""
         "url":        result_url,
         "result_uid": result_uid,
         "ok":         True,
+    }
+
+
+@app.get("/api/ping")
+async def api_ping():
+    """Test rapide - vérifier qu AION est accessible (depuis iPhone, etc.)."""
+    import socket as _sock
+    # Récupérer l IP mémorisée
+    saved_url = None
+    try:
+        saved_url = memory.recall("aion_public_url") or memory.recall("tailscale_ip")
+    except Exception:
+        pass
+    try:
+        local_ip = _sock.gethostbyname(_sock.gethostname())
+    except Exception:
+        local_ip = "inconnu"
+    return {
+        "status":      "ok",
+        "message":     "AION répond !",
+        "local_ip":    local_ip,
+        "saved_url":   saved_url or "non configuré",
+        "tip":         "Pour configurer : AION> remember aion_public_url=http://100.102.139.40:8000",
     }
 
 
