@@ -878,8 +878,7 @@ def _build_result_html(uid: str, data: dict, base_url: str) -> str:
                         cards.append(f'<div class="info-line">{clean}</div>')
                 else:
                     cards.append(f'<div class="info-line">{_html.escape(line)}</div>')
-            result_html = "
-".join(cards)
+            result_html = "\n".join(cards)
         elif action in ("qm_list_tasks",):
             # Tâches QuickMind
             cards = []
@@ -892,8 +891,7 @@ def _build_result_html(uid: str, data: dict, base_url: str) -> str:
                     f'<div class="item-card" style="border-left:3px solid {prio_color};">'
                     f'{_html.escape(line)}</div>'
                 )
-            result_html = "
-".join(cards)
+            result_html = "\n".join(cards)
         else:
             # Résultat générique — préformaté
             result_html = f'<pre class="result-pre">{_html.escape(service_result)}</pre>'
@@ -1213,9 +1211,7 @@ Reponds UNIQUEMENT avec le JSON, sans texte avant ou apres."""
 
         if results:
             voice_resp  = f"J'ai trouvé des résultats pour '{keyword}'. " + " — ".join(results)
-            svc_result  = (ado_res or "") + "
-
-" + (qm_res or "")
+            svc_result  = (ado_res or "") + "\n" + (qm_res or "")
         else:
             voice_resp  = f"Aucun résultat trouvé pour '{keyword}' dans ADO ni QuickMind."
             svc_result  = ""
